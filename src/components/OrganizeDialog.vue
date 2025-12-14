@@ -182,7 +182,7 @@
 </template>
 
 <script lang="ts">
-import { ref, watch, nextTick, onMounted, onUnmounted } from "vue";
+import { ref, watch, nextTick, onMounted, onUnmounted, shallowRef, toRaw } from "vue";
 
 export default {
   name: "OrganizeDialog",
@@ -202,7 +202,7 @@ export default {
   },
   emits: ["close", "organize"],
   setup(props, { emit }) {
-    const pdfDocument = ref(null);
+    const pdfDocument = shallowRef(null);
     const pages = ref([]);
     const fileInput = ref(null);
     const error = ref("");
@@ -349,7 +349,8 @@ export default {
       if (!canvas || !pdfDocument.value) return;
 
       try {
-        const pdfPage = await pdfDocument.value.getPage(page.pageNumber);
+        const pdfInstance = toRaw(pdfDocument.value);
+        const pdfPage = await pdfInstance.getPage(page.pageNumber);
         const viewport = pdfPage.getViewport({ scale: 0.5, rotation: page.rotation });
 
         canvas.width = viewport.width;
