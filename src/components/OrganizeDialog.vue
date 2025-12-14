@@ -87,11 +87,7 @@
                 @contextmenu.prevent="showPageContextMenu($event, page, index)"
               >
                 <div class="page-thumbnail">
-                  <canvas
-                    :ref="(el) => setPageCanvas(page.id, el)"
-                    class="page-canvas"
-                    :style="{ transform: `rotate(${page.rotation}deg)` }"
-                  ></canvas>
+                  <canvas :ref="(el) => setPageCanvas(page.id, el)" class="page-canvas"></canvas>
                   <div v-if="selectedPages.has(page.id)" class="page-selected-indicator">
                     <i class="fa-solid fa-check-circle"></i>
                   </div>
@@ -316,10 +312,12 @@ export default {
 
         // Load all pages
         for (let i = 1; i <= pdf.numPages; i++) {
+          const pdfPage = await pdf.getPage(i);
+          const baseRotation = pdfPage.rotate ? pdfPage.rotate : { angle: 0 };
           pages.value.push({
             id: nextPageId++,
             pageNumber: i,
-            rotation: 0,
+            rotation: baseRotation.angle || 0,
             originalPageNumber: i,
           });
         }
@@ -351,18 +349,40 @@ export default {
       try {
         const pdfInstance = toRaw(pdfDocument.value);
         const pdfPage = await pdfInstance.getPage(page.pageNumber);
-        const viewport = pdfPage.getViewport({ scale: 0.5, rotation: page.rotation });
+        // Always use 0 rotation for viewport, handle rotation in canvas
+        const baseRotation = 0;
+        const viewport = pdfPage.getViewport({ scale: 0.5, rotation: baseRotation });
 
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        // Determine if we need to swap width/height for 90/270 deg
+        const rot = ((page.rotation % 360) + 360) % 360;
+        if (rot === 90 || rot === 270) {
+          canvas.width = viewport.height;
+          canvas.height = viewport.width;
+        } else {
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+        }
 
         const context = canvas.getContext("2d");
+        context.save();
+        // Move origin to center for rotation
+        if (rot === 90) {
+          context.translate(canvas.width, 0);
+          context.rotate(Math.PI / 2);
+        } else if (rot === 180) {
+          context.translate(canvas.width, canvas.height);
+          context.rotate(Math.PI);
+        } else if (rot === 270) {
+          context.translate(0, canvas.height);
+          context.rotate((3 * Math.PI) / 2);
+        }
+        // Render PDF page into the rotated context
         const renderContext = {
           canvasContext: context,
           viewport: viewport,
         };
-
         await pdfPage.render(renderContext).promise;
+        context.restore();
       } catch (err) {
         console.error("Error rendering page:", err);
       }
@@ -689,7 +709,7 @@ export default {
 }
 
 .page-canvas {
-  @apply max-w-full h-9 object-contain;
+  @apply max-w-[70%] max-h-[70%] object-contain;
 }
 
 .page-selected-indicator {
