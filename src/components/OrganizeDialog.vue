@@ -313,11 +313,11 @@ export default {
         // Load all pages
         for (let i = 1; i <= pdf.numPages; i++) {
           const pdfPage = await pdf.getPage(i);
-          const baseRotation = pdfPage.rotate ? pdfPage.rotate : { angle: 0 };
+          const baseRotation = pdfPage.rotate || 0;
           pages.value.push({
             id: nextPageId++,
             pageNumber: i,
-            rotation: baseRotation.angle || 0,
+            rotation: baseRotation,
             originalPageNumber: i,
           });
         }
@@ -349,40 +349,21 @@ export default {
       try {
         const pdfInstance = toRaw(pdfDocument.value);
         const pdfPage = await pdfInstance.getPage(page.pageNumber);
-        // Always use 0 rotation for viewport, handle rotation in canvas
-        const baseRotation = 0;
-        const viewport = pdfPage.getViewport({ scale: 0.5, rotation: baseRotation });
+        const viewport = pdfPage.getViewport({
+          scale: 0.5,
+          rotation: page.rotation,
+        });
 
-        // Determine if we need to swap width/height for 90/270 deg
-        const rot = ((page.rotation % 360) + 360) % 360;
-        if (rot === 90 || rot === 270) {
-          canvas.width = viewport.height;
-          canvas.height = viewport.width;
-        } else {
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-        }
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
 
         const context = canvas.getContext("2d");
-        context.save();
-        // Move origin to center for rotation
-        if (rot === 90) {
-          context.translate(canvas.width, 0);
-          context.rotate(Math.PI / 2);
-        } else if (rot === 180) {
-          context.translate(canvas.width, canvas.height);
-          context.rotate(Math.PI);
-        } else if (rot === 270) {
-          context.translate(0, canvas.height);
-          context.rotate((3 * Math.PI) / 2);
-        }
         // Render PDF page into the rotated context
         const renderContext = {
           canvasContext: context,
           viewport: viewport,
         };
         await pdfPage.render(renderContext).promise;
-        context.restore();
       } catch (err) {
         console.error("Error rendering page:", err);
       }
@@ -421,7 +402,7 @@ export default {
     const addBlankPage = async (index) => {
       const blankPage = {
         id: nextPageId++,
-        pageNumber: null, // null indicates a blank page
+        pageNumber: null,
         rotation: 0,
         originalPageNumber: null,
         isBlank: true,
