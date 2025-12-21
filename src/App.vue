@@ -116,18 +116,6 @@
               <option value="3.0">300%</option>
             </select>
           </div>
-          <div class="option-element">
-            <button @click="openMergeDialog" class="btn ml-4" title="Merge multiple PDF files">
-              <i class="fa-solid fa-object-group mr-2"></i>
-              Merge PDFs
-            </button>
-          </div>
-          <div class="option-element">
-            <button @click="openOrganizeDialog" class="btn ml-4" title="Organize PDF pages">
-              <i class="fa-solid fa-table-cells-large mr-2"></i>
-              Organize
-            </button>
-          </div>
           <!-- Pagination Bar -->
           <div
             class="pagination-bar"
@@ -653,24 +641,6 @@
     <!-- Link Dialog Component -->
     <LinkDialog :show="showLinkDialog" @close="closeLinkDialog" @confirm="handleLinkConfirm" />
 
-    <!-- Merge Dialog Component -->
-    <MergeDialog
-      :show="showMergeDialog"
-      :initialFile="initialFile"
-      @close="closeMergeDialog"
-      @merge="handleMergedPdf"
-      :showToast="showToast"
-    />
-
-    <!-- Organize Dialog Component -->
-    <OrganizeDialog
-      :show="showOrganizeDialog"
-      :initialFile="initialFile"
-      @close="closeOrganizeDialog"
-      @organize="handleOrganizedPdf"
-      :showToast="showToast"
-    />
-
     <div class="pdf-body">
       <!-- Floating Toolbar -->
       <div class="floating-toolbar">
@@ -873,17 +843,13 @@ import { ref, onMounted, nextTick, watch } from "vue";
 import { PDFEditor } from "./js/PDFEditor.js";
 import ImageDialog from "./components/ImageDialog.vue";
 import LinkDialog from "./components/LinkDialog.vue";
-import MergeDialog from "./components/MergeDialog.vue";
-import OrganizeDialog from "./components/OrganizeDialog.vue";
 import { freehandDrawing } from "./utils/FreehandDrawing.js";
 
 export default {
   name: "App",
   components: {
     ImageDialog,
-    LinkDialog,
-    MergeDialog,
-    OrganizeDialog,
+    LinkDialog
   },
   setup() {
     console.log("Vue setup() function called - this means Vue is working");
@@ -1021,12 +987,6 @@ export default {
     const showLinkDialog = ref(false);
     const pendingLinkData = ref(null);
 
-    // Merge dialog state
-    const showMergeDialog = ref(false);
-
-    // Organize dialog state
-    const showOrganizeDialog = ref(false);
-
     // Config dropdown state
     const showConfigDropdown = ref(false);
 
@@ -1111,54 +1071,6 @@ export default {
     const closeLinkDialog = () => {
       showLinkDialog.value = false;
       pendingLinkData.value = null;
-    };
-
-    // Merge dialog functions
-    const openMergeDialog = async () => {
-      if (pdfEditor && isLoaded.value) {
-        const pdfBytes = await pdfEditor.downloadPDF();
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
-        const currentFile = new File([blob], "current_file.pdf", { type: "application/pdf" });
-        initialFile.value = [currentFile];
-      } else {
-        initialFile.value = [];
-      }
-      showMergeDialog.value = true;
-    };
-
-    const closeMergeDialog = () => {
-      showMergeDialog.value = false;
-    };
-
-    const handleMergedPdf = (blob) => {
-      const file = new File([blob], "merged.pdf", { type: "application/pdf" });
-      processFile(file);
-      showMergeDialog.value = false;
-      showToast("Merged PDF loaded!", "success");
-    };
-
-    // Organize dialog functions
-    const openOrganizeDialog = async () => {
-      if (pdfEditor && isLoaded.value) {
-        const pdfBytes = await pdfEditor.downloadPDF();
-        const blob = new Blob([pdfBytes], { type: "application/pdf" });
-        const currentFile = new File([blob], "current_file.pdf", { type: "application/pdf" });
-        initialFile.value = [currentFile];
-      } else {
-        initialFile.value = [];
-      }
-      showOrganizeDialog.value = true;
-    };
-
-    const closeOrganizeDialog = () => {
-      showOrganizeDialog.value = false;
-    };
-
-    const handleOrganizedPdf = (blob) => {
-      const file = new File([blob], "organized.pdf", { type: "application/pdf" });
-      processFile(file);
-      showOrganizeDialog.value = false;
-      showToast("PDF organized successfully!", "success");
     };
 
     // Config dropdown functions
@@ -2615,19 +2527,16 @@ export default {
         }, 100);
       });
 
-      // Setup scroll listener to update current page indicator
       const bodyPdf = document.querySelector(".body-pdf-view");
       if (bodyPdf) {
         let scrollTimeout = null;
         bodyPdf.addEventListener("scroll", () => {
-          // Debounce scroll handling
           if (scrollTimeout) clearTimeout(scrollTimeout);
           scrollTimeout = setTimeout(() => {
             const centerY = bodyPdf.scrollTop + bodyPdf.clientHeight / 2;
             const page = pdfEditor.pdfPages.findIndex((p) => {
               const el = p.container;
               if (!el) return false;
-              // Check if centerY is within this page's vertical bounds
               return el.offsetTop <= centerY && el.offsetTop + el.offsetHeight >= centerY;
             });
             if (page !== -1) {
@@ -2981,14 +2890,6 @@ export default {
       handleLinkConfirm,
       closeLinkDialog,
       initialFile,
-      showMergeDialog,
-      openMergeDialog,
-      closeMergeDialog,
-      handleMergedPdf,
-      showOrganizeDialog,
-      openOrganizeDialog,
-      closeOrganizeDialog,
-      handleOrganizedPdf,
       showConfigDropdown,
       toggleConfigDropdown,
       closeConfigDropdown,

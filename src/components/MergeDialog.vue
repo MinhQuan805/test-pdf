@@ -1,19 +1,19 @@
 <template>
   <div
     v-if="show"
-    class="image-dialog-overlay"
+    class="dialog-overlay"
     @click="handleOverlayClick"
     @dragenter.stop
     @dragover.stop
     @drop.stop
   >
-    <div class="image-dialog" @click.stop>
-      <div class="image-dialog-header">
+    <div class="dialog-container" @click.stop>
+      <div class="dialog-header">
         <h3>Merge PDF Files</h3>
         <button @click="closeDialog" class="dialog-close-btn">&times;</button>
       </div>
 
-      <div class="image-dialog-content">
+      <div class="dialog-content">
         <!-- Upload Section -->
         <div class="image-upload-section">
           <div
@@ -80,7 +80,7 @@
         </div>
       </div>
 
-      <div class="image-dialog-footer">
+      <div class="dialog-footer">
         <button @click="closeDialog" class="btn-secondary" :disabled="merging">Cancel</button>
         <button v-if="mergedPdfBytes" @click="downloadPDF" class="btn-success">
           <i class="fa-solid fa-download"></i>
