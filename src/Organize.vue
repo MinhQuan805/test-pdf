@@ -64,7 +64,7 @@
           <div class="option-element">
             <button @click="openMergeDialog" class="btn ml-4" title="Merge multiple PDF files">
               <i class="fa-solid fa-object-group mr-2"></i>
-              Merge PDFs
+              Merge PDF
             </button>
           </div>
           <div class="option-element">
@@ -950,7 +950,7 @@ export default {
         try {
           const pdfBytes = await organizer.exportPDF();
           const blob = new Blob([pdfBytes], { type: "application/pdf" });
-          const currentFile = new File([blob], "current_organized.pdf", { type: "application/pdf" });
+          const currentFile = new File([blob], "current_files.pdf", { type: "application/pdf" });
           initialFile.value = [currentFile];
         } catch (err) {
           console.error("Error preparing current PDF:", err);
