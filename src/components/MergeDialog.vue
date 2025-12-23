@@ -85,9 +85,9 @@
         <button v-if="mergedPdfBytes" @click="downloadPDF" class="btn-success">
           <i class="fa-solid fa-download"></i>
         </button>
-        <button v-if="mergedPdfBytes" @click="mergeEditor" class="btn-primary">
+        <button v-if="mergedPdfBytes" @click="mergeOrganizer" class="btn-primary">
           <i class="fa-solid fa-file-import mr-0.5"></i>
-          Add to Editor
+          Add to Organizer
         </button>
         <button
           v-else
@@ -302,7 +302,7 @@ export default {
       }
     };
 
-    const mergeEditor = () => {
+    const mergeOrganizer = () => {
       emit("merge", new Blob([mergedPdfBytes.value], { type: "application/pdf" }));
     };
     const downloadPDF = () => {
@@ -334,7 +334,7 @@ export default {
       handleDropReorder,
       mergePDFs,
       downloadPDF,
-      mergeEditor,
+      mergeOrganizer,
       setError,
     };
   },

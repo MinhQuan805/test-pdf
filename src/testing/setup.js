@@ -1,5 +1,5 @@
 // Test setup file for Vitest
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 // Mock window.pdfjsLib
 global.window = global.window || {};
@@ -19,7 +19,7 @@ window.pdfjsLib = {
           render: vi.fn(() => ({
             promise: Promise.resolve(),
           })),
-        })
+        }),
       ),
     }),
   })),
@@ -34,17 +34,21 @@ window.PDFLib = {
           setRotation: vi.fn(),
           getRotation: vi.fn(() => ({ angle: 0 })),
         })),
-        copyPages: vi.fn((srcDoc, pages) => Promise.resolve([{ 
-          getRotation: vi.fn(() => ({ angle: 0 })),
-          setRotation: vi.fn() 
-        }])),
+        copyPages: vi.fn((srcDoc, pages) =>
+          Promise.resolve([
+            {
+              getRotation: vi.fn(() => ({ angle: 0 })),
+              setRotation: vi.fn(),
+            },
+          ]),
+        ),
         save: vi.fn(() => Promise.resolve(new Uint8Array([1, 2, 3]))),
-      })
+      }),
     ),
     load: vi.fn((buffer) =>
       Promise.resolve({
         getPageCount: vi.fn(() => 3),
-      })
+      }),
     ),
   },
   degrees: vi.fn((deg) => deg),
@@ -52,7 +56,7 @@ window.PDFLib = {
 
 // Mock canvas
 HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
-  fillStyle: '',
+  fillStyle: "",
   fillRect: vi.fn(),
   clearRect: vi.fn(),
   drawImage: vi.fn(),

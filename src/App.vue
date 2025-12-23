@@ -849,7 +849,7 @@ export default {
   name: "App",
   components: {
     ImageDialog,
-    LinkDialog
+    LinkDialog,
   },
   setup() {
     console.log("Vue setup() function called - this means Vue is working");
@@ -2472,6 +2472,23 @@ export default {
             isLoaded.value = true;
             showToast(`${fileName} loaded successfully`, "success");
           });
+        }
+      });
+
+      // Listen for PDF from Organizer
+      window.addEventListener("loadPdfFromOrganizer", async (event) => {
+        const pdfData = event.detail?.pdfData;
+        if (pdfData) {
+          try {
+            // Convert ArrayBuffer to File
+            const blob = new Blob([pdfData], { type: "application/pdf" });
+            const file = new File([blob], "from_organizer.pdf", { type: "application/pdf" });
+            processFile(file);
+            showToast("PDF from Organizer loaded successfully!", "success");
+          } catch (error) {
+            console.error("Error loading PDF from Organizer:", error);
+            showToast("Error loading PDF from Organizer", "error");
+          }
         }
       });
 

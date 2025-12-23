@@ -9,7 +9,6 @@ class PDFOrganizer {
 
   // Load a PDF file and extract its pages
   async loadPDFFile(file, reset = true) {
-
     try {
       const originalBuffer = await file.arrayBuffer();
       const bufferForDisplay = originalBuffer.slice(0);
@@ -69,7 +68,7 @@ class PDFOrganizer {
     try {
       if (page.externalPdfDoc) {
         // Use to Raw to avoid Vue reactivity issues
-        pdfInstance = page.externalPdfDoc;
+        pdfInstance = toRaw(page.externalPdfDoc);
       } else {
         return;
       }
@@ -155,10 +154,6 @@ class PDFOrganizer {
 
   // Delete a page at the given index (if more than one page exists)
   deletePage(index) {
-    if (this.pages.length <= 1) {
-      return false;
-    }
-
     this.pages.splice(index, 1);
     return true;
   }
@@ -166,6 +161,23 @@ class PDFOrganizer {
   // Reverse the order of all pages
   reversePages() {
     this.pages.reverse();
+    return this.pages;
+  }
+  // Sort (reverse) selected pages while keeping them in their positions
+  sortSelectedPages(selectedIndices) {
+    if (!selectedIndices || selectedIndices.length === 0) return this.pages;
+
+    // Extract the selected pages
+    const selectedPages = selectedIndices.map((idx) => this.pages[idx]);
+
+    // Reverse the selected pages
+    selectedPages.reverse();
+
+    // Put them back in their original positions
+    selectedIndices.forEach((idx, i) => {
+      this.pages[idx] = selectedPages[i];
+    });
+
     return this.pages;
   }
 
@@ -187,7 +199,7 @@ class PDFOrganizer {
     if (dropIndex < 0 || dropIndex >= this.pages.length) return this.pages;
 
     // Get the selected pages data before removing them
-    const selectedPages = pageIndices.map(idx => this.pages[idx]);
+    const selectedPages = pageIndices.map((idx) => this.pages[idx]);
 
     // Remove selected pages from highest index to lowest to maintain correct indices
     for (let i = pageIndices.length - 1; i >= 0; i--) {
@@ -320,7 +332,7 @@ class PDFOrganizer {
         }
       }
 
-      // Second part: pages pageNumber+1 to end
+      // Second part: pages pageNumber + 1 to end
       for (let i = pageNumber; i < this.pages.length; i++) {
         const pageInfo = this.pages[i];
         if (!pageInfo) continue;

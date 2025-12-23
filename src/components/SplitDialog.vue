@@ -6,9 +6,7 @@
           <i class="fa-solid fa-scissors"></i>
           Split PDF
         </h2>
-        <button @click="closeDialog" class="dialog-close-btn">
-          &times;
-        </button>
+        <button @click="closeDialog" class="dialog-close-btn">&times;</button>
       </div>
 
       <div class="dialog-body">
@@ -29,8 +27,12 @@
           </select>
           <p class="mode-description">
             <span v-if="splitMode === 'range'">Extract specific pages from the PDF</span>
-            <span v-if="splitMode === 'at-page'">Split the PDF into two parts at a specific page number</span>
-            <span v-if="splitMode === 'every'">Split the PDF into multiple parts, each with N pages</span>
+            <span v-if="splitMode === 'at-page'"
+              >Split the PDF into two parts at a specific page number</span
+            >
+            <span v-if="splitMode === 'every'"
+              >Split the PDF into multiple parts, each with N pages</span
+            >
           </p>
         </div>
 
@@ -46,7 +48,9 @@
             placeholder="Enter page number"
           />
           <p class="input-hint">
-            This will create two PDFs: pages 1-{{ splitAtPage }} and pages {{ splitAtPage + 1 }}-{{ totalPages }}
+            This will create two PDFs: pages 1-{{ splitAtPage }} and pages {{ splitAtPage + 1 }}-{{
+              totalPages
+            }}
           </p>
         </div>
 
@@ -97,9 +101,7 @@
       </div>
 
       <div class="dialog-footer">
-        <button @click="closeDialog" class="btn-secondary">
-          Cancel
-        </button>
+        <button @click="closeDialog" class="btn-secondary">Cancel</button>
         <button @click="handleSplit" class="btn-primary" :disabled="!isValid">
           <i class="fa-solid fa-scissors"></i>
           Split PDF
@@ -111,41 +113,43 @@
 
 <script>
 export default {
-  name: 'SplitDialog',
+  name: "SplitDialog",
   props: {
     show: {
       type: Boolean,
-      default: false
+      default: false,
     },
     totalPages: {
       type: Number,
-      required: true
-    }
+      required: true,
+    },
   },
   data() {
     return {
-      splitMode: 'at-page',
+      splitMode: "at-page",
       splitAtPage: 1,
       rangeFrom: 1,
       rangeTo: 2,
-      everyNPages: 1
+      everyNPages: 1,
     };
   },
   computed: {
     isValid() {
-      if (this.splitMode === 'at-page') {
+      if (this.splitMode === "at-page") {
         return this.splitAtPage >= 1 && this.splitAtPage < this.totalPages;
-      } else if (this.splitMode === 'range') {
-        return this.rangeFrom >= 1 && this.rangeTo <= this.totalPages && this.rangeFrom <= this.rangeTo;
-      } else if (this.splitMode === 'every') {
+      } else if (this.splitMode === "range") {
+        return (
+          this.rangeFrom >= 1 && this.rangeTo <= this.totalPages && this.rangeFrom <= this.rangeTo
+        );
+      } else if (this.splitMode === "every") {
         return this.everyNPages >= 1 && this.everyNPages <= this.totalPages;
       }
       return false;
-    }
+    },
   },
   methods: {
     closeDialog() {
-      this.$emit('close');
+      this.$emit("close");
     },
     handleSplit() {
       if (!this.isValid) return;
@@ -155,25 +159,25 @@ export default {
         splitAtPage: this.splitAtPage,
         rangeFrom: this.rangeFrom,
         rangeTo: this.rangeTo,
-        everyNPages: this.everyNPages
+        everyNPages: this.everyNPages,
       };
 
-      this.$emit('split', splitData);
+      this.$emit("split", splitData);
       this.closeDialog();
-    }
+    },
   },
   watch: {
     show(newVal) {
       if (newVal) {
         // Reset to defaults when dialog opens
-        this.splitMode = 'range';
+        this.splitMode = "range";
         this.splitAtPage = Math.floor(this.totalPages / 2);
         this.rangeFrom = 1;
         this.rangeTo = Math.min(2, this.totalPages);
         this.everyNPages = 1;
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -286,5 +290,4 @@ export default {
   display: flex;
   flex-direction: column;
 }
-
 </style>
