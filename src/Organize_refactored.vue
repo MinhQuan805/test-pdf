@@ -3,116 +3,89 @@
     <div class="p-2">
       <div class="header-actions">
         <div class="element-container ml-2">
-          <div class="option-element">
-            <input
-              type="file"
-              id="file"
-              ref="fileInput"
-              style="display: none"
-              @change="handleFileUpload"
-            />
-            <button
-              @click="clickFileInput"
-              class="btn ml-4"
-              title="Open a PDF file from your device"
-            >
-              <i class="fa-solid fa-folder-open mr-2"></i>
-              Open
-            </button>
+          <div class="element-upload element-default">
+            <label>
+              <i class="fa-solid fa-file-pdf"></i>
+              <input
+                ref="fileInput"
+                type="file"
+                accept="application/pdf"
+                @change="handleFileUpload"
+                class="file-input"
+              />
+            </label>
           </div>
-          <div class="option-element" style="position: relative">
-            <div class="dropdown" @click.stop>
-              <button
-                @click="showExportMenu = !showExportMenu"
-                class="btn"
-                title="Export the organized PDF"
-              >
-                <i class="fa-solid fa-download mr-2"></i> Export
-              </button>
-              <div class="dropdown-menu" :class="{ show: showExportMenu }">
-                <button class="dropdown-item" @click="handleExport('all')">
-                  <i class="fa-solid fa-file-export mr-2"></i> Export All
-                </button>
-                <button class="dropdown-item" @click="handleExport('selected')">
-                  <i class="fa-solid fa-check mr-2"></i> Export Selected
-                </button>
-              </div>
-            </div>
-          </div>
-          <input
-            type="file"
-            ref="fileAppend"
-            style="display: none"
-            accept=".pdf"
-            @change="handleAppendFile"
-          />
-          <button @click="clickAppendFileInput" class="btn">
-            <i class="fa-solid fa-file-circle-plus mr-2"></i>
-            Add file
+          <button @click="clickFileInput" class="element-button element-primary">
+            <i class="fa-solid fa-file-pdf"></i>
+            Open PDF
           </button>
-          <div class="option-element">
-            <button @click="scrollToEditor" class="btn btn-xs" title="Focus on the PDF editor area">
-              <i class="fa-solid fa-expand"></i>
-              Focus
+          <button
+            @click="clickAppendFileInput"
+            :disabled="!isLoaded"
+            class="element-button element-primary"
+          >
+            <i class="fa-solid fa-file-circle-plus"></i>
+            Append PDF
+          </button>
+          <input
+            ref="fileAppend"
+            type="file"
+            accept="application/pdf"
+            @change="handleAppendFile"
+            class="file-input"
+          />
+          <button @click="openMergeDialog" class="element-button element-primary">
+            <i class="fa-solid fa-code-merge"></i>
+            Merge PDFs
+          </button>
+          <button
+            @click="openSplitDialog"
+            :disabled="!isLoaded"
+            class="element-button element-primary"
+          >
+            <i class="fa-solid fa-scissors"></i>
+            Split PDF
+          </button>
+          <button
+            @click="reversePages"
+            :disabled="!isLoaded"
+            class="element-button element-primary"
+          >
+            <i class="fa-solid fa-arrows-rotate"></i>
+            Reverse
+          </button>
+          <div class="relative">
+            <button
+              @click.stop="showExportMenu = !showExportMenu"
+              :disabled="!isLoaded"
+              class="element-button element-success"
+            >
+              <i class="fa-solid fa-download"></i>
+              Download
             </button>
-          </div>
-          <div class="option-element">
-            <select v-model="pagesPerRow" class="btn btn-xs" title="Pages per row">
-              <option value="3">3 pages</option>
-              <option value="4">4 pages</option>
-              <option value="5">5 pages</option>
-              <option value="6">6 pages</option>
-            </select>
-          </div>
-          <div class="option-element">
-            <button @click="openMergeDialog" class="btn" title="Merge multiple PDF files">
-              <i class="fa-solid fa-object-group"></i>
-              Merge PDF
-            </button>
-          </div>
-          <div class="option-element">
-            <button @click="openSplitDialog" class="btn" title="Split PDF">
-              <i class="fa-solid fa-scissors"></i>
-              Split PDF
-            </button>
-          </div>
-          <div class="option-element" style="position: relative">
-            <div class="dropdown" @click.stop>
-              <button
-                @click="showActionMenu = !showActionMenu"
-                class="btn"
-                title="Action for selected pages"
-              >
-                <i class="fa-solid fa-check mr-2"></i> Selected
+            <div v-if="showExportMenu" class="dropdown-menu">
+              <button @click="handleExport('all')" class="dropdown-item">
+                <i class="fa-solid fa-file-pdf"></i>
+                All Pages
               </button>
-              <div class="dropdown-menu" :class="{ show: showActionMenu }">
-                <button
-                  class="dropdown-item"
-                  @click="
-                    toggleSelectAll();
-                    selectTool('select');
-                  "
-                >
-                  <i class="fa-solid fa-circle-check mr-2"></i> Select All
-                </button>
-                <button class="dropdown-item" @click="applyToSelected('Delete')">
-                  <i class="fa-solid fa-trash mr-2"></i> Delete
-                </button>
-                <button class="dropdown-item" @click="applyToSelected('Rotate')">
-                  <i class="fa-solid fa-rotate-right mr-2"></i> Rotate
-                </button>
-                <button class="dropdown-item" @click="applyToSelected('Sort')">
-                  <i class="fa-solid fa-sort mr-2"></i> Sort
-                </button>
-              </div>
+              <button
+                @click="handleExport('selected')"
+                :disabled="selectedCount === 0"
+                class="dropdown-item"
+              >
+                <i class="fa-solid fa-file-circle-check"></i>
+                Selected Pages ({{ selectedCount }})
+              </button>
             </div>
           </div>
-          <div class="option-element">
-            <button @click="sendToPDFEditor" class="btn" title="Send PDF to editor">
-              <i class="fa-solid fa-share-from-square"></i>
-              Send to Editor
-            </button>
-          </div>
+          <button
+            @click="sendToPDFEditor"
+            :disabled="!isLoaded"
+            class="element-button element-primary"
+          >
+            <i class="fa-solid fa-pen-to-square"></i>
+            Send to Editor
+          </button>
         </div>
       </div>
     </div>
@@ -122,90 +95,93 @@
       <!-- Floating Toolbar -->
       <div class="floating-toolbar">
         <div class="tools-section">
-          <div
-            class="body-tool"
-            :class="{ active: selectedTool === 'select' }"
+          <button
+            :class="['body-tool', { active: selectedTool === 'select' }]"
             @click="selectTool('select')"
-            title="Select Tool - Click to select pages"
+            title="Select tool"
           >
-            <i class="fa-solid fa-mouse-pointer"></i>
-          </div>
-          <div
-            class="body-tool"
-            :class="{ active: selectedTool === 'swap' }"
-            @click="selectTool('swap')"
-            title="Swap Tool - Click a page and swap with another"
-          >
-            <i class="fa-solid fa-arrow-right-arrow-left"></i>
-          </div>
-          <div
-            class="body-tool"
-            :class="{ active: selectedTool === 'delete' }"
+            <i class="fa-solid fa-hand-pointer"></i>
+          </button>
+          <button
+            :class="['body-tool', { active: selectedTool === 'delete' }]"
             @click="selectTool('delete')"
-            title="Delete Tool - Click pages to delete them"
+            title="Delete tool"
           >
             <i class="fa-solid fa-trash"></i>
-          </div>
-
-          <div
-            class="body-tool"
-            :class="{ active: selectedTool === 'rotate' }"
+          </button>
+          <button
+            :class="['body-tool', { active: selectedTool === 'rotate' }]"
             @click="selectTool('rotate')"
-            title="Rotate Tool - Click pages to rotate them 90° clockwise"
+            title="Rotate tool"
           >
             <i class="fa-solid fa-rotate-right"></i>
-          </div>
-
-          <div
-            class="body-tool"
-            :class="{ active: selectedTool === 'duplicate' }"
+          </button>
+          <button
+            :class="['body-tool', { active: selectedTool === 'duplicate' }]"
             @click="selectTool('duplicate')"
-            title="Duplicate Tool - Click pages to duplicate them"
+            title="Duplicate tool"
           >
             <i class="fa-solid fa-copy"></i>
-          </div>
-
-          <div
-            class="body-tool"
-            :class="{ active: selectedTool === 'add-blank' }"
+          </button>
+          <button
+            :class="['body-tool', { active: selectedTool === 'add-blank' }]"
             @click="selectTool('add-blank')"
-            title="Add Blank Page - Click after a page to insert blank page"
+            title="Add blank page"
           >
-            <i class="fa-solid fa-plus"></i>
-          </div>
-          <div
-            class="body-tool"
-            :class="{ active: selectedTool === 'sort' }"
-            @click="reversePages"
-            title="Sort - Reverse page order"
+            <i class="fa-solid fa-file-circle-plus"></i>
+          </button>
+          <button
+            :class="['body-tool', { active: selectedTool === 'swap' }]"
+            @click="selectTool('swap')"
+            title="Swap pages"
           >
-            <i class="fa-solid fa-sort"></i>
+            <i class="fa-solid fa-arrow-right-arrow-left"></i>
+          </button>
+        </div>
+        <div v-if="selectedTool === 'select' && isLoaded" class="selection-controls">
+          <button @click="toggleSelectAll" class="select-btn" title="Select all">
+            <i :class="allSelected ? 'fa-solid fa-square-check' : 'fa-regular fa-square'"></i>
+            {{ allSelected ? "Deselect All" : "Select All" }}
+          </button>
+          <span v-if="selectedCount > 0" class="badge">{{ selectedCount }} selected</span>
+          <div v-if="selectedCount > 0" class="relative">
+            <button @click.stop="showActionMenu = !showActionMenu" class="action-btn">
+              {{ action }}
+              <i class="fa-solid fa-chevron-down ml-1"></i>
+            </button>
+            <div v-if="showActionMenu" class="dropdown-menu">
+              <button @click="applyToSelected('Delete')" class="dropdown-item text-red-600">
+                <i class="fa-solid fa-trash"></i>
+                Delete
+              </button>
+              <button @click="applyToSelected('Rotate')" class="dropdown-item">
+                <i class="fa-solid fa-rotate-right"></i>
+                Rotate
+              </button>
+              <button @click="applyToSelected('Sort')" class="dropdown-item">
+                <i class="fa-solid fa-arrow-down-up-across-line"></i>
+                Sort (Reverse)
+              </button>
+            </div>
           </div>
         </div>
       </div>
       <div ref="pdfViewContainer" id="body-pdf-view" class="body-pdf-view">
         <!-- Placeholder content for when no PDF is loaded -->
         <div v-if="!isLoaded" class="pdf-placeholder">
-          <div class="pdf-placeholder-content">
-            <i class="fas fa-file-pdf pdf-placeholder-icon"></i>
-
-            <p class="pdf-placeholder-text">Drag and drop a PDF file here to get started</p>
-            <p class="pdf-placeholder-text-secondary">
-              or use the
-              <button @click="clickFileInput" class="btn">
-                <i class="fa-solid fa-folder-open mr-2"></i>
-                Open
-              </button>
-              button above to browse for a file
-            </p>
-            <div class="pdf-placeholder-formats">
-              <span class="pdf-placeholder-format">PDF files</span>
-              <span class="pdf-placeholder-format ml-3">JSON config files</span>
-            </div>
+          <div class="placeholder-content">
+            <i class="fa-solid fa-file-pdf placeholder-icon"></i>
+            <h3 class="placeholder-title">No PDF Loaded</h3>
+            <p class="placeholder-text">Click "Open PDF" to get started</p>
+            <button @click="clickFileInput" class="placeholder-button">
+              <i class="fa-solid fa-upload"></i>
+              Open PDF File
+            </button>
           </div>
         </div>
         <!-- Pages Grid -->
         <div
+          v-if="isLoaded"
           class="pages-grid"
           :style="{ gridTemplateColumns: `repeat(${pagesPerRow}, 1fr)` }"
           @dragover.prevent="handleDragOver"
@@ -213,34 +189,27 @@
           <div
             v-for="(page, index) in pages"
             :key="page.id"
-            :class="[
-              'page-card',
-              colorPage[(page.fileIndex || 0) % colorPage.length],
-              {
-                selected: page.selected,
-                'ring-4': page.selected,
-              },
-            ]"
-            :draggable="selectedTool === 'select'"
+            :class="['page-card', { selected: page.selected }]"
             @click="handlePageClick(index, $event)"
-            @dragstart="selectedTool === 'select' ? handleDragStart(index) : null"
-            @dragend="selectedTool === 'select' ? handleDragEnd : null"
-            @dragover.prevent
-            @drop.prevent="selectedTool === 'select' ? handlePageDrop(index) : null"
             @contextmenu.prevent="showContextMenu($event, page, index)"
+            @dragstart="handleDragStart(index)"
+            @dragend="handleDragEnd"
+            @drop.prevent="handlePageDrop(index)"
+            draggable="true"
           >
             <div class="page-thumbnail">
               <canvas :ref="(el) => setPageCanvas(page.id, el)" class="page-canvas"></canvas>
-              <div
-                :class="[
-                  'page-number-badge',
-                  colorPage[(page.fileIndex || 0) % colorPage.length].split(' ')[0],
-                ]"
-              >
-                {{ page.pageNumber || index + 1 }}
+              <div :class="['page-number-badge', colorPage[page.fileIndex % colorPage.length]]">
+                {{ page.pageNumber || "Blank" }}
               </div>
+              <div class="current-number">Page {{ index + 1 }}</div>
             </div>
-            <div class="current-number">{{ index + 1 }}</div>
+            <div v-if="page.selected" class="selection-indicator">
+              <i class="fa-solid fa-check"></i>
+            </div>
+            <div v-if="swapSourceIndex === index && selectedTool === 'swap'" class="move-indicator">
+              1
+            </div>
           </div>
         </div>
       </div>
@@ -269,19 +238,20 @@
       <div class="preview-canvas-wrapper" @click.stop>
         <div
           class="preview-image-container"
-          @mousemove="zoomEnabled ? handleZoomMove($event) : null"
-          @mouseenter="zoomEnabled ? (showZoomLens = true) : null"
+          @mousemove="zoomEnabled && ((showZoomLens = true), handleZoomMove($event))"
+          @mouseenter="zoomEnabled && (showZoomLens = true)"
           @mouseleave="showZoomLens = false"
         >
           <canvas ref="previewCanvasRef" class="preview-canvas"></canvas>
-          <div v-if="showZoomLens" class="zoom-lens" :style="zoomLensStyle"></div>
+          <div v-if="showZoomLens && zoomEnabled" class="zoom-lens" :style="zoomLensStyle"></div>
         </div>
         <div v-if="showZoomLens && zoomEnabled" class="zoom-result" :style="zoomResultStyle"></div>
         <div class="preview-controls">
           <button
+            @click="prevPreviewPage"
+            :disabled="previewModal.pageIndex === 0"
             class="preview-control-btn"
-            :disabled="previewModal.pageIndex <= 0"
-            @click.stop="prevPreviewPage"
+            title="Previous page"
           >
             <i class="fa-solid fa-chevron-left"></i>
           </button>
@@ -289,32 +259,32 @@
             >{{ previewModal.pageIndex + 1 }} / {{ pages.length }}</span
           >
           <button
+            @click="nextPreviewPage"
+            :disabled="previewModal.pageIndex === pages.length - 1"
             class="preview-control-btn"
-            :disabled="previewModal.pageIndex >= pages.length - 1"
-            @click.stop="nextPreviewPage"
+            title="Next page"
           >
             <i class="fa-solid fa-chevron-right"></i>
           </button>
           <div class="preview-divider"></div>
           <button
-            class="preview-control-btn"
             @click="handlePreviewAction('toggleZoom')"
-            :class="{ active: zoomEnabled }"
+            :class="['preview-control-btn', { active: zoomEnabled }]"
             title="Toggle zoom"
           >
             <i class="fa-solid fa-magnifying-glass-plus"></i>
           </button>
           <button
-            class="preview-control-btn"
             @click="handlePreviewAction('rotatePage')"
-            title="Rotate Page"
+            class="preview-control-btn"
+            title="Rotate page"
           >
             <i class="fa-solid fa-rotate-right"></i>
           </button>
           <button
-            class="preview-control-btn"
             @click="handlePreviewAction('deletePage')"
-            title="Delete Page"
+            class="preview-control-btn"
+            title="Delete page"
           >
             <i class="fa-solid fa-trash"></i>
           </button>
@@ -322,7 +292,6 @@
       </div>
     </div>
   </div>
-  <!-- Toast Notification - Outside main container for better positioning -->
 
   <!-- Dynamic toast -->
   <div
@@ -346,10 +315,10 @@
       <button
         @click.stop="hideToast"
         style="
-          background: none;
+          background: transparent;
           border: none;
           color: white;
-          font-size: 18px;
+          font-size: 20px;
           cursor: pointer;
           margin-left: 10px;
         "
@@ -378,14 +347,16 @@
 </template>
 
 <script lang="ts">
-import { ref, nextTick, onMounted, onUnmounted, render } from "vue";
+import { ref, nextTick, onMounted, onUnmounted } from "vue";
 import { PDFOrganizer } from "./js/PDFOrganizer.js";
 import SplitDialog from "./components/SplitDialog.vue";
 import MergeDialog from "./components/MergeDialog.vue";
 
 export default {
   name: "OrganizerApp",
+  components: { SplitDialog, MergeDialog },
   setup() {
+    // Refs
     const fileInput = ref(null);
     const fileAppend = ref(null);
     const organizer = new PDFOrganizer();
@@ -395,19 +366,27 @@ export default {
     const draggedIndices = ref([]);
     const pagesPerRow = ref(6);
     const pageCanvasRefs = ref({});
-    const contextMenu = ref({
-      show: false,
-      x: 0,
-      y: 0,
-      page: null,
-      pageIndex: -1,
-    });
-    const toast = ref({
-      show: false,
-      message: "",
-      type: "success",
-      timeout: null,
-    });
+    const contextMenu = ref({ show: false, x: 0, y: 0, page: null, pageIndex: -1 });
+    const toast = ref({ show: false, message: "", type: "success", timeout: null });
+    const selectedTool = ref("select");
+    const selectedCount = ref(0);
+    const allSelected = ref(false);
+    const action = ref("Delete");
+    const swapSourceIndex = ref(null);
+    const pdfViewContainer = ref(null);
+    const autoScrollInterval = ref(null);
+    const showActionMenu = ref(false);
+    const showExportMenu = ref(false);
+    const previewModal = ref({ show: false, pageIndex: -1, scale: 2.0 });
+    const previewCanvasRef = ref(null);
+    const showZoomLens = ref(false);
+    const zoomLensStyle = ref({});
+    const zoomResultStyle = ref({});
+    const zoomEnabled = ref(false);
+    const splitDialog = ref({ show: false });
+    const showMergeDialog = ref(false);
+    const initialFile = ref([]);
+    let lastSelectedIndex = -1;
 
     const colorPage = [
       "bg-blue-400 border-blue-300 ring-blue-300",
@@ -418,18 +397,9 @@ export default {
       "bg-pink-400 border-pink-300 ring-pink-300",
     ];
 
-    const selectedTool = ref("select");
-    const selectedCount = ref(0);
-    const allSelected = ref(false);
-    const action = ref("Delete");
-    const swapSourceIndex = ref(null);
-    const pdfViewContainer = ref(null);
-    const autoScrollInterval = ref(null);
-
     // Toast functions
     const showToast = (message, type = "success", duration = 3000) => {
       if (toast.value.timeout) clearTimeout(toast.value.timeout);
-
       toast.value = {
         show: true,
         message,
@@ -446,116 +416,118 @@ export default {
       }
     };
 
+    // Helper functions
+    const updateSelectionCount = () => {
+      selectedCount.value = pages.value.filter((p) => p.selected).length;
+      allSelected.value = pages.value.length > 0 && selectedCount.value === pages.value.length;
+    };
+
+    const closeContextMenu = () => {
+      contextMenu.value.show = false;
+    };
+
+    const updatePages = async (indices = null) => {
+      pages.value = [...organizer.getPages()];
+      await nextTick();
+      if (indices) {
+        for (const idx of indices) await renderPage(idx);
+      }
+    };
+
+    const resetIfEmpty = () => {
+      if (pages.value.length === 0) {
+        isLoaded.value = false;
+        if (fileInput.value) fileInput.value.value = "";
+      }
+    };
+
+    const getSelectedIndices = () =>
+      pages.value.map((page, index) => (page.selected ? index : null)).filter((i) => i !== null);
+
+    const validatePDF = (file) => {
+      if (!file || (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf"))) {
+        showToast("Please select a PDF file.", "warning");
+        return false;
+      }
+      return true;
+    };
+
+    const clearAutoScroll = () => {
+      if (autoScrollInterval.value) {
+        cancelAnimationFrame(autoScrollInterval.value);
+        autoScrollInterval.value = null;
+      }
+    };
+
     // Tool selection
     const selectTool = (tool) => {
       selectedTool.value = tool;
-      // Reset swap source when switching tools
       if (tool !== "select") {
-        pages.value.forEach((page) => {
-          page.selected = false;
-        });
+        pages.value.forEach((page) => (page.selected = false));
         updateSelectionCount();
       }
-      if (tool !== "swap") {
-        swapSourceIndex.value = null;
-      }
+      if (tool !== "swap") swapSourceIndex.value = null;
     };
 
-    // Page selection handlers
-    const handlePageClick = async (index, event) => {
-      const page = pages.value[index];
-      if (selectedTool.value === "select") {
-        setSelectedPage(index, event);
-      } else if (selectedTool.value === "delete") {
-        // Delete page immediately
-        deletePage(index);
-      } else if (selectedTool.value === "rotate") {
-        // Rotate page immediately
-        rotatePage(index, 90);
-      } else if (selectedTool.value === "duplicate") {
-        // Duplicate page immediately
-        duplicatePage(index);
-      } else if (selectedTool.value === "add-blank") {
-        // Add blank page after clicked page
-        addBlankPage(index + 1);
-      } else if (selectedTool.value === "swap") {
-        // Swap tool
-        page.selected = true;
+    // Tool actions map
+    const toolActions = {
+      select: (index, event) => setSelectedPage(index, event),
+      delete: (index) => deletePage(index),
+      rotate: (index) => rotatePage(index, 90),
+      duplicate: (index) => duplicatePage(index),
+      "add-blank": (index) => addBlankPage(index + 1),
+      swap: (index) => {
+        pages.value[index].selected = true;
         swapPages(index);
-      }
+      },
     };
 
-    let lastSelectedIndex = -1;
+    const handlePageClick = async (index, event) => {
+      const action = toolActions[selectedTool.value];
+      if (action) action(index, event);
+    };
+
     const setSelectedPage = (index, event) => {
       const page = pages.value[index];
-      // Use Ctrl/Cmd for single select, Shift for range select
       if (event.ctrlKey || event.metaKey) {
-        // Clear other selections
-        pages.value.forEach((p, idx) => {
-          p.selected = idx === index;
-        });
-      } else if (event.shiftKey) {
-        // Select range
-        if (lastSelectedIndex !== -1) {
-          const [start, end] = [lastSelectedIndex, index].sort((a, b) => a - b);
-          for (let i = start; i <= end; i++) {
-            pages.value[i].selected = pages.value[lastSelectedIndex].selected;
-          }
-        } else {
-          page.selected = pages.value[index].selected;
-        }
+        pages.value.forEach((p, idx) => (p.selected = idx === index));
+      } else if (event.shiftKey && lastSelectedIndex !== -1) {
+        const start = Math.min(lastSelectedIndex, index);
+        const end = Math.max(lastSelectedIndex, index);
+        pages.value.forEach((p, idx) => (p.selected = idx >= start && idx <= end));
       } else {
         page.selected = !page.selected;
         lastSelectedIndex = index;
       }
       updateSelectionCount();
     };
+
     // Page operations
     const rotatePage = async (index, degrees) => {
       organizer.rotatePage(index, degrees);
-      pages.value = [...organizer.getPages()];
-
-      await nextTick();
-      await renderPage(index);
+      await updatePages([index]);
       closeContextMenu();
     };
 
     const duplicatePage = async (index) => {
-      const newPage = organizer.duplicatePage(index);
-      if (!newPage) return;
-
-      pages.value = [...organizer.getPages()];
-      await nextTick();
-      await renderPage(index + 1);
+      if (!organizer.duplicatePage(index)) return;
+      await updatePages([index + 1]);
       closeContextMenu();
     };
 
     const addBlankPage = async (index) => {
       const blankPage = organizer.addBlankPage(index);
       pages.value = [...organizer.getPages()];
-
       await nextTick();
-
       const canvas = pageCanvasRefs.value[blankPage.id];
-      if (canvas) {
-        organizer.renderBlankPage(canvas);
-      }
-
+      if (canvas) organizer.renderBlankPage(canvas);
       closeContextMenu();
     };
 
     const deletePage = (index) => {
       organizer.deletePage(index);
       pages.value = [...organizer.getPages()];
-      // If all pages deleted, reset to empty state
-      if (pages.value.length === 0) {
-        isLoaded.value = false;
-        // Reset file input to allow re-uploading the same file
-        if (fileInput.value) {
-          fileInput.value.value = "";
-        }
-      }
-
+      resetIfEmpty();
       closeContextMenu();
     };
 
@@ -570,155 +542,90 @@ export default {
       if (swapSourceIndex.value === null) {
         swapSourceIndex.value = index;
       } else if (swapSourceIndex.value === index) {
-        // Clicked the same page, reset
         pages.value[index].selected = false;
         swapSourceIndex.value = null;
         updateSelectionCount();
       } else {
-        // Perform swap
         organizer.swapPages(swapSourceIndex.value, index);
-        pages.value = [...organizer.getPages()];
-        // Clear selected state after swap
+        await updatePages([swapSourceIndex.value, index]);
         pages.value[swapSourceIndex.value].selected = false;
         pages.value[index].selected = false;
-        await nextTick();
-        await renderPage(swapSourceIndex.value);
-        await renderPage(index);
         swapSourceIndex.value = null;
         updateSelectionCount();
       }
     };
-    const updateSelectionCount = () => {
-      selectedCount.value = pages.value.filter((p) => p.selected).length;
-      allSelected.value = pages.value.length > 0 && selectedCount.value === pages.value.length;
-    };
 
     const toggleSelectAll = () => {
       const shouldSelect = !allSelected.value;
-      pages.value.forEach((page) => {
-        page.selected = shouldSelect;
-      });
+      pages.value.forEach((page) => (page.selected = shouldSelect));
       updateSelectionCount();
     };
 
-    const showActionMenu = ref(false);
-
-    // Apply action to selected pages
     const applyToSelected = async (actionType) => {
       showActionMenu.value = false;
-      const selectedIndices = [];
-      pages.value.forEach((page, index) => {
-        if (page.selected) selectedIndices.push(index);
-      });
-
+      const selectedIndices = getSelectedIndices();
       if (selectedIndices.length === 0) {
         showToast("No pages selected", "warning");
         return;
       }
 
       if (actionType === "Delete") {
-        // Delete from highest index to lowest
         for (let i = selectedIndices.length - 1; i >= 0; i--) {
           organizer.deletePage(selectedIndices[i]);
         }
         pages.value = [...organizer.getPages()];
-        // If all pages deleted, reset to empty state
-        if (pages.value.length === 0) {
-          isLoaded.value = false;
-          if (fileInput.value) {
-            fileInput.value.value = "";
-          }
-        }
+        resetIfEmpty();
       } else if (actionType === "Rotate") {
-        // Rotate all selected pages
         for (const index of selectedIndices) {
           organizer.rotatePage(index, 90);
         }
-        pages.value = [...organizer.getPages()];
-        await nextTick();
-        for (const index of selectedIndices) {
-          await renderPage(index);
-        }
+        await updatePages(selectedIndices);
       } else if (actionType === "Sort") {
-        // Sort (reverse) selected pages
         organizer.sortSelectedPages(selectedIndices);
-        pages.value = [...organizer.getPages()];
-        await nextTick();
-        for (const idx of selectedIndices) {
-          await renderPage(idx);
-        }
+        await updatePages(selectedIndices);
       }
-
       updateSelectionCount();
     };
 
     // File handling
-    const clickFileInput = () => {
-      fileInput.value?.click();
-    };
+    const clickFileInput = () => fileInput.value?.click();
+    const clickAppendFileInput = () => fileAppend.value?.click();
 
     const handleFileUpload = () => {
       const file = fileInput.value.files[0];
-      if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-        showToast("Please select a PDF file.", "warning");
-        return;
-      }
-      if (file) {
+      if (validatePDF(file)) {
         loadPDFFile(file);
-        // Reset input to allow re-uploading the same file
         fileInput.value.value = "";
       }
     };
 
-    // Append PDF logic
-    const clickAppendFileInput = () => {
-      fileAppend.value?.click();
-    };
-
     const handleAppendFile = () => {
       const file = fileAppend.value.files[0];
-      if (!file) return;
-
-      if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-        showToast("Please select a PDF file.", "warning");
-        return;
+      if (validatePDF(file)) {
+        loadPDFFile(file, false);
+        fileAppend.value.value = "";
       }
-
-      loadPDFFile(file, false);
-      // Reset input to allow re-uploading the same file
-      fileAppend.value.value = "";
     };
 
-    // Load PDF file
     const loadPDFFile = async (file, reset = true) => {
-      if (file.type !== "application/pdf") {
-        return;
-      }
+      if (!validatePDF(file)) return;
       try {
         const result = await organizer.loadPDFFile(file, reset);
-        // Update pages with reactivity trigger
         pages.value = [...result.pages];
         isLoaded.value = true;
-
-        // Wait for DOM to update and render
         await nextTick();
-
-        // Render only the newly added pages
         for (let i = result.startId; i < result.endId; i++) {
-          const pageIndex = pages.value.findIndex((p) => p.id === i);
-          if (pageIndex !== -1) {
-            await renderPage(pageIndex);
-          }
+          const page = pages.value.find((p) => p.id === i);
+          if (page) await renderPage(pages.value.indexOf(page));
         }
       } catch (err) {
         showToast("Error loading PDF");
       }
     };
+
     // Page rendering
     const renderAllPages = async () => {
-      for (let i = 0; i < pages.value.length; i++) {
-        await renderPage(i);
-      }
+      for (let i = 0; i < pages.value.length; i++) await renderPage(i);
     };
 
     const renderPage = async (index) => {
@@ -726,15 +633,12 @@ export default {
       if (!page) return;
       let canvas = pageCanvasRefs.value[page.id];
       let attempts = 0;
-      const maxAttempts = 20;
-      while (!canvas && attempts < maxAttempts) {
+      while (!canvas && attempts < 20) {
         await new Promise((resolve) => setTimeout(resolve, 50));
         canvas = pageCanvasRefs.value[page.id];
         attempts++;
       }
-      if (!canvas) {
-        return;
-      }
+      if (!canvas) return;
       try {
         if (page.isBlank) {
           organizer.renderBlankPage(canvas);
@@ -747,51 +651,26 @@ export default {
     };
 
     const setPageCanvas = (pageId, el) => {
-      if (el) {
-        pageCanvasRefs.value[pageId] = el;
-      }
+      if (el) pageCanvasRefs.value[pageId] = el;
     };
 
-    // Page preview
-    const previewModal = ref({
-      show: false,
-      pageIndex: -1,
-      scale: 2.0,
-    });
-    const previewCanvasRef = ref(null);
-    const showZoomLens = ref(false);
-    const zoomLensStyle = ref({});
-    const zoomResultStyle = ref({});
-    const zoomEnabled = ref(false);
-
-    // Split dialog state
-    const splitDialog = ref({
-      show: false,
-    });
-
-    // Merge dialog state
-    const showMergeDialog = ref(false);
-    const initialFile = ref([]);
-
+    // Preview modal
     const previewPage = async (index) => {
       closeContextMenu();
-
       previewModal.value.pageIndex = index;
       previewModal.value.show = true;
-
       await nextTick();
       await renderPreview();
     };
 
     const renderPreview = async () => {
-      const index = previewModal.value.pageIndex;
+      const { pageIndex } = previewModal.value;
       const canvas = previewCanvasRef.value;
-
-      if (index >= 0 && canvas) {
+      if (pageIndex >= 0 && canvas) {
         try {
-          await organizer.renderPage(index, canvas, previewModal.value.scale);
+          await organizer.renderPage(pageIndex, canvas, previewModal.value.scale);
         } catch (e) {
-          console.error("Preview render error", e);
+          console.error("Error rendering preview:", e);
         }
       }
     };
@@ -803,27 +682,21 @@ export default {
       showZoomLens.value = false;
     };
 
-    const nextPreviewPage = async () => {
-      if (previewModal.value.pageIndex < pages.value.length - 1) {
-        previewModal.value.pageIndex++;
+    const navigatePreview = async (direction) => {
+      const newIndex = previewModal.value.pageIndex + direction;
+      if (newIndex >= 0 && newIndex < pages.value.length) {
+        previewModal.value.pageIndex = newIndex;
         await nextTick();
         await renderPreview();
       }
     };
 
-    const prevPreviewPage = async () => {
-      if (previewModal.value.pageIndex > 0) {
-        previewModal.value.pageIndex--;
-        await nextTick();
-        await renderPreview();
-      }
-    };
+    const nextPreviewPage = () => navigatePreview(1);
+    const prevPreviewPage = () => navigatePreview(-1);
 
     const toggleZoom = () => {
       zoomEnabled.value = !zoomEnabled.value;
-      if (!zoomEnabled.value) {
-        showZoomLens.value = false;
-      }
+      if (!zoomEnabled.value) showZoomLens.value = false;
     };
 
     const handleZoomMove = (event) => {
@@ -832,22 +705,20 @@ export default {
 
       const container = event.currentTarget;
       const rect = container.getBoundingClientRect();
-
-      // Zoom lens size
       const lensSize = 100;
       const zoomLevel = 2;
       const zoomResultSize = 200;
-      const offset = 20; // Offset from cursor
+      const offset = 20;
 
-      // Calculate mouse position relative to container
-      let x = event.clientX - rect.left;
-      let y = event.clientY - rect.top;
+      let x = Math.max(
+        lensSize / 2,
+        Math.min(event.clientX - rect.left, rect.width - lensSize / 2),
+      );
+      let y = Math.max(
+        lensSize / 2,
+        Math.min(event.clientY - rect.top, rect.height - lensSize / 2),
+      );
 
-      // Prevent lens from going outside the image
-      x = Math.max(lensSize / 2, Math.min(x, rect.width - lensSize / 2));
-      y = Math.max(lensSize / 2, Math.min(y, rect.height - lensSize / 2));
-
-      // Position the lens
       zoomLensStyle.value = {
         left: `${x - lensSize / 2}px`,
         top: `${y - lensSize / 2}px`,
@@ -855,24 +726,16 @@ export default {
         height: `${lensSize}px`,
       };
 
-      // Position zoom result near cursor (top-right of cursor)
-      // Use absolute position relative to viewport
       let zoomResultX = event.clientX + offset;
       let zoomResultY = event.clientY - zoomResultSize - offset;
-
-      // Keep zoom result within viewport bounds
       if (zoomResultX + zoomResultSize > window.innerWidth) {
         zoomResultX = event.clientX - zoomResultSize - offset;
       }
-      if (zoomResultY < 0) {
-        zoomResultY = event.clientY + offset;
-      }
+      if (zoomResultY < 0) zoomResultY = event.clientY + offset;
 
-      // Calculate background position for zoomed result
       const bgPosX = -(x * zoomLevel - zoomResultSize / 2);
       const bgPosY = -(y * zoomLevel - zoomResultSize / 2);
 
-      // Create zoom result style
       zoomResultStyle.value = {
         left: `${zoomResultX}px`,
         top: `${zoomResultY}px`,
@@ -882,115 +745,87 @@ export default {
         backgroundRepeat: "no-repeat",
       };
     };
-    const handlePreviewAction = (actionType) => {
-      if (actionType === "toggleZoom") {
-        toggleZoom();
-      } else if (actionType === "deletePage") {
-        const pageIndex = previewModal.value.pageIndex;
-        deletePage(pageIndex);
+
+    const previewActions = {
+      toggleZoom: () => toggleZoom(),
+      deletePage: () => {
+        deletePage(previewModal.value.pageIndex);
         nextPreviewPage();
-      } else if (actionType === "rotatePage") {
-        const pageIndex = previewModal.value.pageIndex;
-        rotatePage(pageIndex, 90);
+      },
+      rotatePage: () => {
+        rotatePage(previewModal.value.pageIndex, 90);
         renderPreview();
-      }
+      },
     };
+
+    const handlePreviewAction = (actionType) => {
+      const action = previewActions[actionType];
+      if (action) action();
+    };
+
     // Drag and drop
     const handleDragStart = (index) => {
       draggedIndex.value = index;
-
-      // If dragging a selected page, drag all selected pages
       const draggedPage = pages.value[index];
       if (draggedPage.selected) {
-        draggedIndices.value = [];
-        pages.value.forEach((page, idx) => {
-          if (page.selected) {
-            draggedIndices.value.push(idx);
-          }
-        });
+        draggedIndices.value = getSelectedIndices();
       } else {
         draggedIndices.value = [];
+      }
+    };
+
+    const setupAutoScroll = (mouseY, rect) => {
+      const scrollThreshold = 100;
+      const scrollSpeed = 10;
+      const container = pdfViewContainer.value;
+
+      if (mouseY - rect.top < scrollThreshold) {
+        const scroll = () => {
+          container.scrollTop -= scrollSpeed;
+          if (container.scrollTop > 0) autoScrollInterval.value = requestAnimationFrame(scroll);
+        };
+        autoScrollInterval.value = requestAnimationFrame(scroll);
+      } else if (rect.bottom - mouseY < scrollThreshold) {
+        const scroll = () => {
+          container.scrollTop += scrollSpeed;
+          if (container.scrollTop < container.scrollHeight - container.clientHeight) {
+            autoScrollInterval.value = requestAnimationFrame(scroll);
+          }
+        };
+        autoScrollInterval.value = requestAnimationFrame(scroll);
       }
     };
 
     const handleDragOver = (event) => {
       scrollToEditor();
       if (draggedIndex.value === null) return;
-
       const container = pdfViewContainer.value;
       if (!container) return;
 
+      clearAutoScroll();
       const rect = container.getBoundingClientRect();
-      const mouseY = event.clientY;
-      const scrollThreshold = 100; // pixels from edge to trigger scroll
-      const scrollSpeed = 10; // pixels per frame
-
-      // Clear existing interval
-      if (autoScrollInterval.value) {
-        cancelAnimationFrame(autoScrollInterval.value);
-        autoScrollInterval.value = null;
-      }
-
-      // Check if near top edge
-      if (mouseY - rect.top < scrollThreshold) {
-        const scroll = () => {
-          if (container.scrollTop > 0) {
-            container.scrollTop -= scrollSpeed;
-            autoScrollInterval.value = requestAnimationFrame(scroll);
-          }
-        };
-        autoScrollInterval.value = requestAnimationFrame(scroll);
-      }
-      // Check if near bottom edge
-      else if (rect.bottom - mouseY < scrollThreshold) {
-        const scroll = () => {
-          if (container.scrollTop < container.scrollHeight - container.clientHeight) {
-            container.scrollTop += scrollSpeed;
-            autoScrollInterval.value = requestAnimationFrame(scroll);
-          }
-        };
-        autoScrollInterval.value = requestAnimationFrame(scroll);
-      }
+      setupAutoScroll(event.clientY, rect);
     };
 
-    const handleDragEnd = () => {
-      if (autoScrollInterval.value) {
-        cancelAnimationFrame(autoScrollInterval.value);
-        autoScrollInterval.value = null;
-      }
-    };
+    const handleDragEnd = () => clearAutoScroll();
 
     const handlePageDrop = (dropIndex) => {
       if (draggedIndex.value === null) return;
 
-      // If dragging multiple selected pages
       if (draggedIndices.value.length > 1) {
         organizer.moveMultiplePages(draggedIndices.value, dropIndex);
       } else {
-        // Single page drag
         organizer.movePage(draggedIndex.value, dropIndex);
       }
-      // Update pages reference
-      pages.value = [...organizer.getPages()];
 
-      // Reset everything after drag and drop
+      pages.value = [...organizer.getPages()];
       draggedIndex.value = null;
       draggedIndices.value = [];
-
-      // Clear all selections
-      pages.value.forEach((page) => {
-        page.selected = false;
-      });
+      pages.value.forEach((page) => (page.selected = false));
       updateSelectionCount();
-
-      // Clean up auto scroll
-      if (autoScrollInterval.value) {
-        cancelAnimationFrame(autoScrollInterval.value);
-        autoScrollInterval.value = null;
-      }
+      clearAutoScroll();
     };
 
-    // Context menu
     const showContextMenu = (event, page, index) => {
       contextMenu.value = {
         show: true,
@@ -1001,23 +836,14 @@ export default {
       };
     };
 
-    const closeContextMenu = () => {
-      contextMenu.value.show = false;
-    };
-
     const scrollToEditor = () => {
       const pdfEditor = document.querySelector(".pdf-organizer");
       if (pdfEditor) {
-        pdfEditor.scrollIntoView({
-          block: "start",
-          inline: "center",
-        });
-      } else {
-        console.log("PDF editor container not found");
+        pdfEditor.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
       }
     };
 
-    // Split dialog methods
+    // Split dialog
     const openSplitDialog = () => {
       if (!isLoaded.value || pages.value.length === 0) {
         showToast("Please load a PDF first", "error");
@@ -1030,24 +856,32 @@ export default {
       splitDialog.value.show = false;
     };
 
+    const downloadPDFBytes = async (pdfBytes, filename) => {
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      await nextTick();
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    };
+
     const handleSplit = async (splitData) => {
       try {
         let result;
-
         if (splitData.mode === "at-page") {
-          result = await organizer.splitAtPage(splitData.splitAtPage);
-          // Download two PDFs
+          result = await organizer.splitAtPage(splitData.pageNumber);
           downloadPDFBytes(result[0], "split-part-1.pdf");
           downloadPDFBytes(result[1], "split-part-2.pdf");
         } else if (splitData.mode === "range") {
-          result = await organizer.extractPageRange(splitData.rangeFrom, splitData.rangeTo);
+          result = await organizer.extractPageRange(splitData.fromPage, splitData.toPage);
           downloadPDFBytes(result, `splited_pdf.pdf`);
         } else if (splitData.mode === "every") {
           result = await organizer.splitEveryNPages(splitData.everyNPages);
-          // Download multiple PDFs
-          result.forEach((pdfBytes, index) => {
-            downloadPDFBytes(pdfBytes, `split-part-${index + 1}.pdf`);
-          });
+          result.forEach((pdf, i) => downloadPDFBytes(pdf, `split-part-${i + 1}.pdf`));
         }
       } catch (err) {
         console.error("Error splitting PDF:", err);
@@ -1055,17 +889,15 @@ export default {
       }
     };
 
-    // Merge dialog functions
+    // Merge dialog
     const openMergeDialog = async () => {
       if (isLoaded.value && pages.value.length > 0) {
-        // Export current PDF as initial file for merge
         try {
           const pdfBytes = await organizer.exportPDF();
-          const blob = new Blob([pdfBytes], { type: "application/pdf" });
-          const currentFile = new File([blob], "current_files.pdf", { type: "application/pdf" });
+          const currentFile = { name: "current.pdf", data: pdfBytes };
           initialFile.value = [currentFile];
         } catch (err) {
-          console.error("Error preparing current PDF:", err);
+          console.error("Error exporting current PDF:", err);
           initialFile.value = [];
         }
       } else {
@@ -1089,52 +921,37 @@ export default {
         showToast("Error loading merged PDF", "error");
       }
     };
-    const downloadPDFBytes = async (pdfBytes, filename) => {
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      await nextTick();
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    };
-    // Download PDF
+
+    // Export functions
     const downloadPDF = async () => {
       try {
         const pdfBytes = await organizer.exportPDF();
-
         await downloadPDFBytes(pdfBytes, "organized_pdf.pdf");
       } catch (err) {
-        console.error("Error organizing PDF:", err);
+        console.error("Error downloading PDF:", err);
       }
     };
-    // Export selected pages
+
     const exportSelected = async () => {
-      const selectedIndices = [];
+      const selectedIndices = getSelectedIndices();
+      if (selectedIndices.length === 0) {
+        showToast("No pages selected", "warning");
+        return;
+      }
       try {
-        pages.value.forEach((page, index) => {
-          if (page.selected) selectedIndices.push(index);
-        });
         const pdfBytes = await organizer.exportPDF(selectedIndices);
-        const filename = `organized_pdf.pdf`;
+        const filename = `selected_pages_${selectedIndices.length}.pdf`;
         downloadPDFBytes(pdfBytes, filename);
       } catch (err) {
-        showToast("Error exporting selected pages", "error");
+        console.error("Error exporting selected pages:", err);
       }
     };
-    const showExportMenu = ref(false);
-    // Handle export dropdown change
+
     const handleExport = async (value) => {
       showExportMenu.value = false;
-      if (value === "all") await downloadPDF();
-      else if (value === "selected") {
-        if (selectedCount.value === 0) {
-          showToast("No pages selected to export", "warning");
-          return;
-        }
+      if (value === "all") {
+        await downloadPDF();
+      } else if (value === "selected") {
         await exportSelected();
       }
     };
@@ -1145,32 +962,22 @@ export default {
       showExportMenu.value = false;
     };
 
-    // Convert and send to PDF Editor
     const sendToPDFEditor = async () => {
       try {
-        if (!isLoaded.value || pages.value.length === 0) {
-          showToast("Please load a PDF first", "error");
-          return;
-        }
-
         const pdfBytes = await organizer.exportPDF();
-
-        // Store in sessionStorage to transfer to PDF Editor
         const blob = new Blob([pdfBytes], { type: "application/pdf" });
         const reader = new FileReader();
-
         reader.onload = (e) => {
-          sessionStorage.setItem("pdfFileFromOrganizer", e.target.result);
-
-          // Dispatch event to notify PDF Editor
-          const event = new CustomEvent("loadPdfFromOrganizer", {
-            detail: { pdfData: e.target.result },
-          });
-          window.dispatchEvent(event);
-
-          showToast("Sent to PDF Editor successfully!", "success");
+          const arrayBuffer = e.target.result;
+          window.parent.postMessage(
+            {
+              type: "loadPDFFromOrganizer",
+              pdfData: arrayBuffer,
+              fileName: "organized.pdf",
+            },
+            "*",
+          );
         };
-
         reader.readAsArrayBuffer(blob);
       } catch (err) {
         console.error("Error sending to PDF Editor:", err);
@@ -1253,10 +1060,6 @@ export default {
       handleExport,
       sendToPDFEditor,
     };
-  },
-  components: {
-    SplitDialog,
-    MergeDialog,
   },
 };
 </script>
@@ -1500,6 +1303,7 @@ export default {
     opacity: 1;
   }
 }
+
 @media (max-width: 768px) {
   .pages-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
