@@ -170,6 +170,9 @@ class PDFPage {
         this.createTextFieldFromPDF(field, viewport);
       } else if (field.fieldType === FIELD_TYPES.BUTTON && field.checkBox) {
         this.createCheckboxFromPDF(field, viewport);
+      } else if (field.subtype === "Text" && field.annotationType === 1) {
+        // Text annotation (sticky note)
+        this.createNoteFromPDF(field, viewport);
       }
     }
   }
@@ -182,7 +185,7 @@ class PDFPage {
     const tempY = Math.ceil(rect[1]);
     const width = Math.floor(rect[2]) - x - 2 * borderWidth;
     const height = Math.floor(rect[3]) - tempY - 2 * borderWidth;
-    const y = viewport.height - tempY - height - 2 * borderWidth;
+    const y = pageHeight - tempY - height - 2 * borderWidth;
     const color = this.rgbToHex(field.color[0], field.color[1], field.color[2]);
     const borderColor = this.rgbToHex(
       field.borderColor[0],
@@ -244,7 +247,7 @@ class PDFPage {
     const tempY = Math.ceil(rect[1]);
     const width = Math.floor(rect[2]) - x - 2 * borderWidth;
     const height = Math.floor(rect[3]) - tempY - 2 * borderWidth;
-    const y = viewport.height - tempY - height - 2 * borderWidth;
+    const y = pageHeight - tempY - height - 2 * borderWidth;
     const color = this.rgbToHex(field.color[0], field.color[1], field.color[2]);
     const borderColor = this.rgbToHex(
       field.borderColor[0],
@@ -272,6 +275,53 @@ class PDFPage {
         backgroundColor,
         isChecked,
         isReadOnly,
+      ),
+      this.container,
+    );
+  }
+
+  createNoteFromPDF(field, viewport) {
+    const rect = field.rect;
+    const id = field.id || `note_${Date.now()}_${Math.random()}`;
+    const scale = viewport.scale;
+    const pageHeight = viewport.height / scale;
+
+    // Notes are typically small icons
+    const x = Math.ceil(rect[0]);
+    const tempY = Math.ceil(rect[1]);
+    const width = 30;
+    const height = 30;
+    const y = pageHeight - tempY - height;
+
+    // Get color from annotation or use default
+    let color = "#FFFF00"; // Default yellow
+    if (field.color && field.color.length === 3) {
+      const r = field.color[0] <= 1 ? field.color[0] * 255 : field.color[0];
+      const g = field.color[1] <= 1 ? field.color[1] * 255 : field.color[1];
+      const b = field.color[2] <= 1 ? field.color[2] * 255 : field.color[2];
+      color = this.rgbToHex(Math.round(r), Math.round(g), Math.round(b));
+    }
+
+    // Get note content
+    const text = field.contentsObj?.str|| "";
+
+    // Author information
+    const author = field.titleObj?.str || "User";
+
+    new NoteOperationComponent(
+      NoteOperationComponent.createDefaultOperation(
+        id,
+        x,
+        y,
+        width,
+        height,
+        text,
+        color,
+        "#FFFF88",
+        "#000000",
+        "Helvetica",
+        12,
+        author
       ),
       this.container,
     );

@@ -76,6 +76,29 @@ class PDFGenerator {
       }
 
       const [cpage] = await pdfDoc.copyPages(srcDoc, [pageNumber - 1]);
+
+      // Remove existing Text annotations (Notes) to avoid duplicates when re-adding them from editor state
+      const annotsRef = cpage.node.get(PDFLib.PDFName.of("Annots"));
+      if (annotsRef) {
+        const annots = cpage.node.context.lookup(annotsRef);
+        if (annots instanceof PDFLib.PDFArray) {
+          const newAnnots = [];
+          for (let i = 0; i < annots.size(); i++) {
+            const annotRef = annots.get(i);
+            const annot = cpage.node.context.lookup(annotRef);
+            let isNote = false;
+            if (annot instanceof PDFLib.PDFDict) {
+              const subtype = annot.lookup(PDFLib.PDFName.of("Subtype"));
+              if (subtype instanceof PDFLib.PDFName && subtype.asString() === "/Text") {
+                isNote = true;
+              }
+            }
+            if (!isNote) newAnnots.push(annotRef);
+          }
+          cpage.node.set(PDFLib.PDFName.of("Annots"), cpage.node.context.obj(newAnnots));
+        }
+      }
+
       pdfDoc.addPage(cpage);
     }
 

@@ -819,7 +819,7 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted, nextTick, watch } from "vue";
+import { ref, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { PDFEditor } from "./js/PDFEditor.js";
 import ImageDialog from "./components/ImageDialog.vue";
 import LinkDialog from "./components/LinkDialog.vue";
@@ -2483,6 +2483,80 @@ export default {
       }
     };
 
+    const handleLoadPdfFromLanding = (event) => {
+      const { fileData, fileName } = event.detail;
+      if (pdfEditor && fileData) {
+        // Convert data URL to binary string
+        const base64Data = fileData.split(",")[1];
+        const binaryString = atob(base64Data);
+
+        clearPdfPages();
+        isLoaded.value = true;
+        pdfEditor.renderPDF("", binaryString).then(() => {
+          pdfEditor.applyZoom(zoomLevel.value);
+          setupCanvasDrawingListeners();
+          setTimeout(() => {
+            updateToolbarPosition();
+          }, 100);
+          isLoaded.value = true;
+          showToast(`${fileName} loaded successfully`, "success");
+        });
+      }
+    };
+
+    const handleLoadPdfFromOrganizer = async (event) => {
+      const pdfData = event.detail?.pdfData;
+      if (pdfData) {
+        try {
+          // Convert ArrayBuffer to File
+          const blob = new Blob([pdfData], { type: "application/pdf" });
+          const file = new File([blob], "from_organizer.pdf", { type: "application/pdf" });
+          processFile(file);
+          showToast("PDF from Organizer loaded successfully!", "success");
+        } catch (error) {
+          console.error("Error loading PDF from Organizer:", error);
+          showToast("Error loading PDF from Organizer", "error");
+        }
+      }
+    };
+
+    const handleDocumentClick = (event) => {
+      const dropdown = event.target.closest(".dropdown");
+      if (!dropdown && showConfigDropdown.value) {
+        showConfigDropdown.value = false;
+      }
+    };
+
+    const handleWindowResize = () => {
+      setTimeout(() => {
+        updateToolbarPosition();
+      }, 100);
+    };
+
+    let scrollTimeout = null;
+    const handleBodyScroll = () => {
+      const bodyPdf = pdfViewContainer.value;
+      if (!bodyPdf || !pdfEditor) return;
+
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const centerY = bodyPdf.scrollTop + bodyPdf.clientHeight / 2;
+        const page = pdfEditor.pdfPages.findIndex((p) => {
+          const el = p.container;
+          if (!el) return false;
+          return el.offsetTop <= centerY && el.offsetTop + el.offsetHeight >= centerY;
+        });
+        if (page !== -1) {
+          currentPage.value = page + 1;
+        }
+      }, 200);
+    };
+
+    const handleEditNote = (e) => {
+      const operation = e.detail.target ? e.detail.target.getOperation() : e.detail?.operation;
+      if (operation) openEditNoteDialog(operation);
+    };
+
     onMounted(async () => {
       console.log(`onMounted - starting`);
 
@@ -2500,10 +2574,7 @@ export default {
           document.addEventListener("pdfeditor.componentDragging", uploadPropertyPanel);
           document.addEventListener("pdfeditor.componentResizing", uploadPropertyPanel);
           document.addEventListener("pdfeditor.shouldClearAllSelection", clearPropertyPanel);
-          document.addEventListener("pdfeditor.editNote", (e) => {
-            const operation = e.detail.target.getOperation();
-            openEditNoteDialog(operation);
-          });
+          document.addEventListener("pdfeditor.editNote", handleEditNote);
           console.log("PDFEditor initialized successfully");
         } catch (error) {
           console.error("Error creating PDFEditor:", error);
@@ -2515,26 +2586,7 @@ export default {
       }
 
       // Listen for file load from landing page
-      window.addEventListener("loadPdfFromLanding", (event) => {
-        const { fileData, fileName } = event.detail;
-        if (pdfEditor && fileData) {
-          // Convert data URL to binary string
-          const base64Data = fileData.split(",")[1];
-          const binaryString = atob(base64Data);
-
-          clearPdfPages();
-          isLoaded.value = true;
-          pdfEditor.renderPDF("", binaryString).then(() => {
-            pdfEditor.applyZoom(zoomLevel.value);
-            setupCanvasDrawingListeners();
-            setTimeout(() => {
-              updateToolbarPosition();
-            }, 100);
-            isLoaded.value = true;
-            showToast(`${fileName} loaded successfully`, "success");
-          });
-        }
-      });
+      window.addEventListener("loadPdfFromLanding", handleLoadPdfFromLanding);
 
       // Check for PDF file in sessionStorage (from landing page)
       const storedPdfFile = sessionStorage.getItem("pdfFile");
@@ -2565,12 +2617,7 @@ export default {
       setupTooltipPositioning();
 
       // Setup click outside listener for dropdown
-      document.addEventListener("click", (event) => {
-        const dropdown = event.target.closest(".dropdown");
-        if (!dropdown && showConfigDropdown.value) {
-          showConfigDropdown.value = false;
-        }
-      });
+      document.addEventListener("click", handleDocumentClick);
 
       // Setup drag and drop for PDF files
       document.addEventListener("dragenter", handleDragEnter);
@@ -2582,49 +2629,105 @@ export default {
       await loadIconCache();
 
       // Setup window resize listener to update toolbar position
-      window.addEventListener("resize", () => {
-        setTimeout(() => {
-          updateToolbarPosition();
-        }, 100);
-      });
+      window.addEventListener("resize", handleWindowResize);
 
       // Listen for PDF from Organizer
-      window.addEventListener("loadPdfFromOrganizer", async (event) => {
-        const pdfData = event.detail?.pdfData;
-        if (pdfData) {
-          try {
-            // Convert ArrayBuffer to File
-            const blob = new Blob([pdfData], { type: "application/pdf" });
-            const file = new File([blob], "from_organizer.pdf", { type: "application/pdf" });
-            processFile(file);
-            showToast("PDF from Organizer loaded successfully!", "success");
-          } catch (error) {
-            console.error("Error loading PDF from Organizer:", error);
-            showToast("Error loading PDF from Organizer", "error");
-          }
-        }
-      });
+      window.addEventListener("loadPdfFromOrganizer", handleLoadPdfFromOrganizer);
 
       const bodyPdf = document.querySelector(".body-pdf-view");
       if (bodyPdf) {
-        let scrollTimeout = null;
-        bodyPdf.addEventListener("scroll", () => {
-          if (scrollTimeout) clearTimeout(scrollTimeout);
-          scrollTimeout = setTimeout(() => {
-            const centerY = bodyPdf.scrollTop + bodyPdf.clientHeight / 2;
-            const page = pdfEditor.pdfPages.findIndex((p) => {
-              const el = p.container;
-              if (!el) return false;
-              return el.offsetTop <= centerY && el.offsetTop + el.offsetHeight >= centerY;
-            });
-            if (page !== -1) {
-              currentPage.value = page + 1;
-            }
-          }, 200);
-        });
+        bodyPdf.addEventListener("scroll", handleBodyScroll);
       }
     });
 
+    onUnmounted(() => {
+
+      // Clear toast timeout
+      if (toast.value.timeout) {
+        clearTimeout(toast.value.timeout);
+        toast.value.timeout = null;
+      }
+
+      // Remove all document event listeners
+      document.removeEventListener("pdfeditor.componentSelected", uploadPropertyPanel);
+      document.removeEventListener("pdfeditor.componentDragging", uploadPropertyPanel);
+      document.removeEventListener("pdfeditor.componentResizing", uploadPropertyPanel);
+      document.removeEventListener("pdfeditor.shouldClearAllSelection", clearPropertyPanel);
+      document.removeEventListener("pdfeditor.editNote", handleEditNote);
+      document.removeEventListener("dragenter", handleDragEnter);
+      document.removeEventListener("dragover", handleDragOver);
+      document.removeEventListener("dragleave", handleDragLeave);
+      document.removeEventListener("drop", handleDrop);
+
+      // Remove window event listeners
+      window.removeEventListener("resize", handleWindowResize);
+      window.removeEventListener("loadPdfFromLanding", handleLoadPdfFromLanding);
+      window.removeEventListener("loadPdfFromOrganizer", handleLoadPdfFromOrganizer);
+      document.removeEventListener("click", handleDocumentClick);
+
+      const bodyPdf = document.querySelector(".body-pdf-view");
+      if (bodyPdf) {
+        bodyPdf.removeEventListener("scroll", handleBodyScroll);
+      }
+
+      // Remove tooltip listeners
+      const toolButtons = document.querySelectorAll(".body-tool[data-tooltip]");
+      toolButtons.forEach((button) => {
+        button.removeEventListener("mouseleave", hideCustomTooltip);
+      });
+
+      const topBarButtons = document.querySelectorAll(
+        ".header-actions .btn[data-tooltip], .element-container .btn[data-tooltip], .element-container select[data-tooltip], .dropdown-item[data-tooltip]",
+      );
+      topBarButtons.forEach((button) => {
+        button.removeEventListener("mouseleave", hideCustomTooltip);
+      });
+
+      // Clear all drawing overlays
+      if (drawingOverlay) {
+        drawingOverlay.remove();
+        drawingOverlay = null;
+      }
+
+      // Clear all measurement overlays
+      document.querySelectorAll(".measurement-overlay").forEach((overlay) => {
+        overlay.remove();
+      });
+
+      // Clear custom tooltips
+      hideCustomTooltip();
+
+      // Clear freehand drawing state
+      freehandPath.value = [];
+
+      // Cleanup PDF editor if exists
+      if (pdfEditor) {
+        // Clear PDF pages
+        clearPdfPages();
+
+        pdfEditor = null;
+      }
+
+      // Clear icon cache
+      iconCache.value = {};
+
+      // Clear all refs
+      selectedOperation.value = null;
+      pendingImageData.value = null;
+      pendingLinkData.value = null;
+      pendingNoteData.value = null;
+      editingNoteOperation.value = null;
+
+      // Clear measurement state
+      measurementState.value = {
+        isActive: false,
+        firstPoint: null,
+        currentPoint: null,
+        measurements: [],
+        liveMeasurement: null,
+      };
+
+    });
     const setupTooltipPositioning = () => {
       // Wait for DOM to be ready
       nextTick(() => {
