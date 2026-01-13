@@ -612,6 +612,13 @@
       @confirm="handleNoteConfirm"
     />
 
+    <!-- Watermark Dialog Component -->
+    <WatermarkDialog
+      :show="showWatermarkDialog"
+      @close="closeWatermarkDialog"
+      @confirm="handleWatermarkConfirm"
+    />
+
     <div class="pdf-body">
       <!-- Floating Toolbar -->
       <div class="floating-toolbar">
@@ -678,6 +685,14 @@
             title="White-out Tool - Click and drag to cover text with white rectangles"
           >
             <i class="fa fa-window-close-o" aria-hidden="true"></i>
+          </div>
+
+          <div
+            class="body-tool"
+            @click="openWatermarkDialog"
+            title="Watermark Tool - Add watermark to pages"
+          >
+            <i class="fa-solid fa-stamp"></i>
           </div>
 
           <div
@@ -824,6 +839,7 @@ import { PDFEditor } from "./js/PDFEditor.js";
 import ImageDialog from "./components/ImageDialog.vue";
 import LinkDialog from "./components/LinkDialog.vue";
 import NoteDialog from "./components/NoteDialog.vue";
+import WatermarkDialog from "./components/WatermarkDialog.vue";
 import PaginationBar from "./components/PaginationBar.vue";
 import { freehandDrawing } from "./utils/FreehandDrawing.js";
 
@@ -833,6 +849,7 @@ export default {
     ImageDialog,
     LinkDialog,
     NoteDialog,
+    WatermarkDialog,
     PaginationBar,
   },
   setup() {
@@ -983,6 +1000,9 @@ export default {
     const pendingNoteData = ref(null);
     const editingNoteOperation = ref(null);
 
+    // Watermark dialog state
+    const showWatermarkDialog = ref(false);
+
     // Config dropdown state
     const showConfigDropdown = ref(false);
 
@@ -1109,6 +1129,74 @@ export default {
       showNoteDialog.value = false;
       pendingNoteData.value = null;
       editingNoteOperation.value = null;
+    };
+
+    // Watermark dialog functions
+    const openWatermarkDialog = () => {
+      if (!isLoaded.value) {
+        showToast("Please load a PDF first", "warning");
+        return;
+      }
+      showWatermarkDialog.value = true;
+    };
+
+    const handleWatermarkConfirm = (watermarkData) => {
+      if (!pdfEditor) return;
+
+      const pages = watermarkData.pages === "all" ?
+        Array.from({ length: totalPages.value }, (_, i) => i + 1) :
+        watermarkData.pages;
+
+      pages.forEach(pageNum => {
+        if (pageNum > 0 && pageNum <= totalPages.value) {
+          const page = pdfEditor.pdfPages[pageNum - 1];
+          if (page) {
+            // Calculate rotation based on orientation
+            let rotation = 0;
+            if (watermarkData.orientation === "diagonal") {
+              rotation = -45;
+            } else if (watermarkData.orientation === "vertical") {
+              rotation = 90;
+            }
+
+            // Create text operation for watermark
+            const id = `watermark-${Date.now()}-${pageNum}`;
+            const x = page.container.offsetWidth / 2 - 100; // Center horizontally
+            const y = page.container.offsetHeight / 2 - 50; // Center vertically
+
+            page.createComponentWithDimensions(
+              "text",
+              {
+                color: watermarkData.color,
+                opacity: watermarkData.opacity / 100,
+                fontSize: watermarkData.size,
+                fontFamily: "Helvetica",
+                rotation: rotation,
+              },
+              id,
+              x,
+              y,
+              200, // width
+              watermarkData.size // height based on font size
+            );
+
+            // Set the text content
+            const components = Array.from(page.container.getElementsByClassName("component"));
+            const watermarkComponent = components.find(c => c.operation.id === id);
+            if (watermarkComponent && watermarkComponent.operation) {
+              watermarkComponent.operation.text = watermarkData.text;
+              watermarkComponent.operationChanged("text", watermarkData.text);
+            }
+          }
+        }
+      });
+
+      showToast(`Watermark added to ${pages.length} page(s)`, "success");
+      closeWatermarkDialog();
+    };
+
+    const closeWatermarkDialog = () => {
+      showWatermarkDialog.value = false;
     };
 
     // Config dropdown functions
@@ -2997,6 +3085,10 @@ export default {
       openEditNoteDialog,
       pendingNoteData,
       editingNoteOperation,
+      showWatermarkDialog,
+      openWatermarkDialog,
+      handleWatermarkConfirm,
+      closeWatermarkDialog,
     };
   },
 };
