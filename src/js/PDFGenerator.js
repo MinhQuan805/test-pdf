@@ -90,6 +90,8 @@ class PDFGenerator {
       for (const op of createOperations) {
         if (op.type === "text") {
           await this.drawTextOnPage(pdfDoc, pdfPage, op);
+        } else if (op.type === "watermark") {
+          await this.drawTextOnPage(pdfDoc, pdfPage, op);
         } else if (op.type === "rectangle") {
           await this.drawRectangleOnPage(pdfDoc, pdfPage, op);
         } else if (op.type === "circle") {
@@ -125,17 +127,50 @@ class PDFGenerator {
   static async drawTextOnPage(pdfDoc, pdfPage, operation) {
     const operationPageHeight = pdfPage.getHeight();
 
-    const xPadding = operation.xPadding;
+    const xPadding = operation.xPadding || 0;
     const text = operation.text.replaceAll("\n\n", "\n \n");
     const x = operation.x;
     const y = operation.y;
-    const fontFamily = operation.fontFamily;
+    let fontFamily = operation.fontFamily;
     const fontSize = parseInt(operation.fontSize);
     const fontColor = PDFGenerator.hexToRgb(operation.color);
-    const fontLineHeight = operation.fontSize * operation.lineHeight;
-    const fontWordBreak = operation.wordBreak;
+    const fontLineHeight = operation.fontSize * (operation.lineHeight || 1);
+    const fontWordBreak = operation.wordBreak || "break-all";
     const width = operation.width;
     const opacity = parseFloat(operation.opacity, 10);
+    const bold = operation.bold || false;
+    const italic = operation.italic || false;
+    const underline = operation.underline || false;
+    const rotation = parseFloat(operation.rotation) || 0;
+
+    // Adjust font family based on bold/italic flags
+    if (fontFamily === "Helvetica") {
+      if (bold && italic) {
+        fontFamily = "Helvetica-BoldOblique";
+      } else if (bold) {
+        fontFamily = "Helvetica-Bold";
+      } else if (italic) {
+        fontFamily = "Helvetica-Oblique";
+      }
+    } else if (fontFamily === "Times-Roman" || fontFamily === "TimesRoman") {
+      if (bold && italic) {
+        fontFamily = "Times-BoldItalic";
+      } else if (bold) {
+        fontFamily = "Times-Bold";
+      } else if (italic) {
+        fontFamily = "Times-Italic";
+      } else {
+        fontFamily = "Times-Roman";
+      }
+    } else if (fontFamily === "Courier") {
+      if (bold && italic) {
+        fontFamily = "Courier-BoldOblique";
+      } else if (bold) {
+        fontFamily = "Courier-Bold";
+      } else if (italic) {
+        fontFamily = "Courier-Oblique";
+      }
+    }
 
     let embedFont;
 
@@ -183,7 +218,7 @@ class PDFGenerator {
       wordBreaks.push(" ");
     }
 
-    await pdfPage.drawText(text, {
+    const drawOptions = {
       x: x + xPadding,
       y: operationPageHeight - y - fontSize,
       color: PDFLib.rgb(fontColor.red, fontColor.green, fontColor.blue),
@@ -193,7 +228,28 @@ class PDFGenerator {
       opacity: opacity,
       wordBreaks: wordBreaks,
       maxWidth: width,
-    });
+    };
+
+    // Add rotation if specified
+    if (rotation !== 0) {
+      drawOptions.rotate = PDFLib.degrees(rotation);
+    }
+
+    await pdfPage.drawText(text, drawOptions);
+
+    // Draw underline if specified
+    if (underline) {
+      const textWidth = embedFont.widthOfTextAtSize(text, fontSize);
+      const underlineY = operationPageHeight - y - fontSize - 2;
+
+      pdfPage.drawLine({
+        start: { x: x + xPadding, y: underlineY },
+        end: { x: x + xPadding + textWidth, y: underlineY },
+        thickness: Math.max(1, fontSize / 12),
+        color: PDFLib.rgb(fontColor.red, fontColor.green, fontColor.blue),
+        opacity: opacity,
+      });
+    }
   }
 
   static async drawImageOnPage(pdfDoc, pdfPage, operation) {

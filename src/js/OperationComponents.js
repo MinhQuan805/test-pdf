@@ -20,6 +20,7 @@ class BasicOperationComponent {
     this.wrapperContainer.style.width = `${this.operation.width}px`;
 
     this.wrapperContainer.operation = operation;
+    this.wrapperContainer.component = this;
 
     this.canvasContainer.appendChild(this.wrapperContainer);
 
@@ -485,6 +486,11 @@ class TextOperationComponent extends BasicOperationComponent {
 
     // Initial size update
     setTimeout(this.updateSize, 0);
+
+    this.wrapperContainer.addEventListener("dblclick", (event) => {
+      event.stopPropagation();
+      this.fireEvent("pdfeditor.editWatermark");
+    });
   }
 
   updateSize = () => {
@@ -1044,6 +1050,180 @@ class NoteOperationComponent extends BasicOperationComponent {
   };
 }
 
+class WatermarkOperationComponent extends BasicOperationComponent {
+  constructor(operation, canvasContainer) {
+    super(operation, canvasContainer);
+
+    this.shadow = document.createElement("div");
+    this.shadow.classList.add("component-content");
+    this.shadow.style.width = "auto";
+    this.shadow.style.height = "auto";
+    this.shadow.style.whiteSpace = "pre-wrap";
+    this.shadow.style.overflowWrap = "break-word";
+    this.shadow.style.display = "inline-block";
+    this.shadow.style.lineHeight = "1.2";
+    this.shadow.style.overflow = "visible";
+    this.shadow.style.paddingTop = "1px";
+    this.shadow.contentEditable = false;
+    this.shadow.style.pointerEvents = "none"; // Watermarks shouldn't be editable
+
+    this.wrapperContainer.appendChild(this.shadow);
+    this.initializeOperation();
+
+    this.wrapperContainer.addEventListener("dblclick", (event) => {
+      event.stopPropagation();
+      this.fireEvent("pdfeditor.editWatermark");
+    });
+
+    // Initial size update
+    setTimeout(this.updateSize, 0);
+  }
+
+  updateSize = () => {
+    const temp = document.createElement("div");
+    temp.style.position = "absolute";
+    temp.style.visibility = "hidden";
+    temp.style.whiteSpace = "pre-wrap";
+    temp.style.overflowWrap = "break-word";
+    temp.style.display = "inline-block";
+    temp.style.lineHeight = "1.2";
+    temp.style.font = this.shadow.style.font || `${this.operation.fontSize}px ${this.operation.fontFamily}`;
+    temp.style.fontSize = this.shadow.style.fontSize;
+    temp.style.fontFamily = this.shadow.style.fontFamily;
+    temp.style.fontWeight = this.shadow.style.fontWeight;
+    temp.style.fontStyle = this.shadow.style.fontStyle;
+    temp.textContent = this.shadow.textContent || "WATERMARK";
+
+    document.body.appendChild(temp);
+    const width = Math.max(temp.offsetWidth + 8, 20);
+    const height = Math.max(temp.offsetHeight + 8, 20);
+    document.body.removeChild(temp);
+
+    this.operation.width = width;
+    this.operation.height = height;
+    this.wrapperContainer.style.width = `${width}px`;
+    this.wrapperContainer.style.height = `${height}px`;
+
+    if (this.wrapperContainer.moveable) {
+      this.wrapperContainer.moveable.updateRect();
+    }
+  };
+
+  makeMoveable = () => {
+    const deleteAble = this.createDeleteAble();
+
+    this.wrapperContainer.moveable = new Moveable(this.canvasContainer, {
+      target: this.wrapperContainer,
+      container: this.canvasContainer,
+      draggable: true,
+      resizable: false,
+      rotatable: true, // Enable rotation for watermarks
+      origin: false,
+      ables: [deleteAble],
+      props: { deleteViewable: true },
+    });
+
+    this.wrapperContainer.moveable.on("drag", ({ target, left, top }) => {
+      target.style.left = `${left}px`;
+      target.style.top = `${top}px`;
+      this.operation.x = left;
+      this.operation.y = top;
+      this.fireEvent("pdfeditor.componentDragging");
+    });
+
+    this.wrapperContainer.moveable.on("rotate", ({ target, transform }) => {
+      target.style.transform = transform;
+      // Extract rotation angle from transform
+      const match = transform.match(/rotate\(([^)]+)\)/);
+      if (match) {
+        this.operation.rotation = parseFloat(match[1]);
+      }
+    });
+
+    this.wrapperContainer.moveable.updateRect();
+  };
+
+  operationChanged = (property, value) => {
+    switch (property) {
+      case "text":
+        this.shadow.textContent = value;
+        this.updateSize();
+        break;
+      case "color":
+        this.shadow.style.color = value;
+        break;
+      case "fontSize":
+        this.shadow.style.fontSize = value + "px";
+        this.updateSize();
+        break;
+      case "fontFamily":
+        this.shadow.style.fontFamily = value;
+        this.updateSize();
+        break;
+      case "opacity":
+        this.shadow.style.opacity = value;
+        break;
+      case "bold":
+        this.shadow.style.fontWeight = value ? "bold" : "normal";
+        this.updateSize();
+        break;
+      case "italic":
+        this.shadow.style.fontStyle = value ? "italic" : "normal";
+        this.updateSize();
+        break;
+      case "underline":
+        this.shadow.style.textDecoration = value ? "underline" : "none";
+        break;
+      case "rotation":
+        this.wrapperContainer.style.transform = `rotate(${value}deg)`;
+        break;
+    }
+  };
+
+  static createDefaultOperation = (
+    id,
+    x,
+    y,
+    width = 200,
+    height = 50,
+    text = "WATERMARK",
+    fontFamily = "Helvetica",
+    fontSize = 126,
+    color = "#1E1E1E",
+    opacity = 0.5,
+    rotation = 0,
+    bold = false,
+    italic = false,
+    underline = false,
+    groupId = null,
+  ) => {
+    return {
+      type: "watermark",
+      operation: "create",
+      name: "",
+      identifier: id,
+      height: height,
+      width: width,
+      x: x,
+      y: y,
+      xPadding: 2,
+      yPadding: 5,
+      text: text,
+      fontFamily: fontFamily,
+      color: color,
+      fontSize: fontSize,
+      lineHeight: 1,
+      opacity: opacity,
+      wordBreak: "break-all",
+      rotation: rotation,
+      bold: bold,
+      italic: italic,
+      underline: underline,
+      groupId: groupId,
+    };
+  };
+}
+
 export {
   BasicOperationComponent,
   ImageOperationComponent,
@@ -1054,4 +1234,5 @@ export {
   CheckboxOperationComponent,
   LinkOperationComponent,
   NoteOperationComponent,
+  WatermarkOperationComponent,
 };

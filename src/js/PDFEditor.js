@@ -8,6 +8,7 @@ import {
   CheckboxOperationComponent,
   LinkOperationComponent,
   NoteOperationComponent,
+  WatermarkOperationComponent,
 } from "./OperationComponents.js";
 
 import { PDFGenerator } from "./PDFGenerator.js";
@@ -498,6 +499,53 @@ class PDFPage {
           this.container,
         );
 
+      case COMPONENT_TYPES.WATERMARK:
+        return new WatermarkOperationComponent(
+          WatermarkOperationComponent.createDefaultOperation(
+            id,
+            x,
+            y,
+            width,
+            height,
+            settings.text || "WATERMARK",
+            settings.fontFamily || "Helvetica",
+            settings.fontSize || 126,
+            settings.color || "#1E1E1E",
+            settings.opacity || 0.5,
+            settings.rotation || 0,
+            settings.bold || false,
+            settings.italic || false,
+            settings.underline || false,
+            settings.groupId || null,
+          ),
+          this.container,
+        );
+
+      default:
+        return null;
+    }
+  }
+
+  createComponentFromOperation(operation) {
+    switch (operation.type) {
+      case COMPONENT_TYPES.IMAGE:
+        return new ImageOperationComponent(operation, this.container);
+      case COMPONENT_TYPES.RECTANGLE:
+        return new RectangleOperationComponent(operation, this.container);
+      case COMPONENT_TYPES.CIRCLE:
+        return new CircleOperationComponent(operation, this.container);
+      case COMPONENT_TYPES.TEXT:
+        return new TextOperationComponent(operation, this.container);
+      case COMPONENT_TYPES.TEXT_FIELD:
+        return new TextFieldOperationComponent(operation, this.container);
+      case COMPONENT_TYPES.CHECKBOX:
+        return new CheckboxOperationComponent(operation, this.container);
+      case COMPONENT_TYPES.LINK:
+        return new LinkOperationComponent(operation, this.container);
+      case COMPONENT_TYPES.NOTE:
+        return new NoteOperationComponent(operation, this.container);
+      case COMPONENT_TYPES.WATERMARK:
+        return new WatermarkOperationComponent(operation, this.container);
       default:
         return null;
     }
