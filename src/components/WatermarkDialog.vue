@@ -43,7 +43,7 @@
         </div>
         <!-- Font Styles -->
         <div class="form-group">
-          <label class="form-label">Font Style</label>
+          <label class="form-label">Font Style & Alignment</label>
           <div class="font-style-buttons">
             <button
               :class="['font-style-btn', { active: watermarkData.bold }]"
@@ -66,10 +66,37 @@
             >
               <u>U</u>
             </button>
+
+            <div class="w-px h-12 bg-gray-300 mx-1"></div>
+
             <label class="font-style-btn color-picker-btn" title="Color Picker">
               <i class="fa-solid fa-fill" :style="{ color: watermarkData.color }"></i>
               <input v-model="watermarkData.color" type="color" class="color-input-hidden" />
             </label>
+
+            <div class="w-px h-12 bg-gray-300 mx-1"></div>
+
+            <button
+              :class="['font-style-btn', { active: watermarkData.alignment === 'left' }]"
+              @click="watermarkData.alignment = 'left'"
+              title="Align Left"
+            >
+              <i class="fa-solid fa-align-left"></i>
+            </button>
+            <button
+              :class="['font-style-btn', { active: watermarkData.alignment === 'center' }]"
+              @click="watermarkData.alignment = 'center'"
+              title="Align Center"
+            >
+              <i class="fa-solid fa-align-center"></i>
+            </button>
+            <button
+              :class="['font-style-btn', { active: watermarkData.alignment === 'right' }]"
+              @click="watermarkData.alignment = 'right'"
+              title="Align Right"
+            >
+              <i class="fa-solid fa-align-right"></i>
+            </button>
           </div>
         </div>
 
@@ -233,6 +260,7 @@ export default {
         bold: false,
         italic: false,
         underline: false,
+        alignment: "center",
         position: "center",
         applyTo: "all",
         pageRange: "",
@@ -292,6 +320,7 @@ export default {
         fontStyle: this.watermarkData.italic ? "italic" : "normal",
         textDecoration: this.watermarkData.underline ? "underline" : "none",
         whiteSpace: "pre",
+        textAlign: this.watermarkData.alignment,
       };
     },
     watermarkPositionStyle() {
@@ -408,6 +437,7 @@ export default {
         bold: false,
         italic: false,
         underline: false,
+        alignment: "center",
         position: "center",
         applyTo: "all",
         pageRange: "",

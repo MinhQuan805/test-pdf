@@ -430,6 +430,7 @@ body {
   position: absolute;
   cursor: move;
   overflow: hidden;
+  z-index: 10;
 }
 
 .component.selected {

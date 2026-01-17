@@ -95,6 +95,7 @@ class PDFPage {
   constructor(container) {
     this.container = container;
     this.container.classList.add("pdf-page");
+    this.container.style.position = "relative";
 
     this.canvas = document.createElement("canvas");
     this.canvas.setAttribute("id", "body-pdf-canvas");
@@ -107,7 +108,7 @@ class PDFPage {
 
   setupEventListeners() {
     // Basic click handler for selection - drawing handlers will be added by App.vue
-    this.canvas.addEventListener("click", (event) => {
+    this.container.addEventListener("click", (event) => {
       event.stopPropagation();
       this.setSelected();
     });
@@ -153,11 +154,33 @@ class PDFPage {
 
       const formFields = await page.getAnnotations();
 
-      await page.render({
+      const renderTask = page.render({
         annotationMode: pdfjsLib.AnnotationMode.DISABLE,
         canvasContext: this.context,
         viewport: page.getViewport({ scale: DEFAULT_VALUES.SCALE }),
       });
+
+      await renderTask.promise;
+
+      // Create Text Layer
+      const textLayerDiv = document.createElement("div");
+      textLayerDiv.className = "textLayer";
+      textLayerDiv.style.width = `${displayWidth}px`;
+      textLayerDiv.style.height = `${displayHeight}px`;
+      // Set CSS variables for pdf.js text layer
+      textLayerDiv.style.setProperty("--total-scale-factor", "1");
+      textLayerDiv.style.setProperty("--min-font-size", "1");
+      this.container.appendChild(textLayerDiv);
+
+      // Use the same scale as display to match canvas display size
+      const textContent = await page.getTextContent();
+      const textLayerViewport = page.getViewport({ scale: 1 });
+      const textLayer = new pdfjsLib.TextLayer({
+        textContentSource: textContent,
+        container: textLayerDiv,
+        viewport: textLayerViewport,
+      });
+      await textLayer.render();
 
       this.processFormFields(formFields, viewport);
     } catch (error) {
@@ -171,6 +194,9 @@ class PDFPage {
         this.createTextFieldFromPDF(field, viewport);
       } else if (field.fieldType === FIELD_TYPES.BUTTON && field.checkBox) {
         this.createCheckboxFromPDF(field, viewport);
+      } else if (field.subtype === "Text" && field.annotationType === 1) {
+        // Text annotation (sticky note)
+        this.createNoteFromPDF(field, viewport);
       }
     }
   }
@@ -273,6 +299,53 @@ class PDFPage {
         backgroundColor,
         isChecked,
         isReadOnly,
+      ),
+      this.container,
+    );
+  }
+
+    createNoteFromPDF(field, viewport) {
+    const rect = field.rect;
+    const id = field.id || `note_${Date.now()}_${Math.random()}`;
+    const scale = viewport.scale;
+    const pageHeight = viewport.height / scale;
+
+    // Notes are typically small icons
+    const x = Math.ceil(rect[0]);
+    const tempY = Math.ceil(rect[1]);
+    const width = 30;
+    const height = 30;
+    const y = pageHeight - tempY - height;
+
+    // Get color from annotation or use default
+    let color = "#FFFF00"; // Default yellow
+    if (field.color && field.color.length === 3) {
+      const r = field.color[0] <= 1 ? field.color[0] * 255 : field.color[0];
+      const g = field.color[1] <= 1 ? field.color[1] * 255 : field.color[1];
+      const b = field.color[2] <= 1 ? field.color[2] * 255 : field.color[2];
+      color = this.rgbToHex(Math.round(r), Math.round(g), Math.round(b));
+    }
+
+    // Get note content
+    const text = field.contentsObj?.str|| "";
+
+    // Author information
+    const author = field.titleObj?.str || "User";
+
+    new NoteOperationComponent(
+      NoteOperationComponent.createDefaultOperation(
+        id,
+        x,
+        y,
+        width,
+        height,
+        text,
+        color,
+        "#FFFF88",
+        "#000000",
+        "Helvetica",
+        12,
+        author
       ),
       this.container,
     );
@@ -516,6 +589,7 @@ class PDFPage {
             settings.bold || false,
             settings.italic || false,
             settings.underline || false,
+            settings.alignment || "center",
             settings.groupId || null,
           ),
           this.container,

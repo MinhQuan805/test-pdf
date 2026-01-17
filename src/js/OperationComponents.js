@@ -977,10 +977,10 @@ class NoteOperationComponent extends BasicOperationComponent {
         <span><i class="fa-regular fa-comment-alt"></i> Note</span>
         <span style="font-weight: normal; font-size: 0.9em;">${new Date().toLocaleString()}</span>
       </div>
-      <div style="padding: 5px; font-weight: bold;">
+      <div style="padding: 5px 10px 2px 10px; font-weight: bold;">
         <span>${author}</span>
       </div>
-      <div style="padding: 10px; min-height: 50px; white-space: pre-wrap;">${text}</div>
+      <div style="padding: 2px 10px 10px 10px; min-height: 50px; white-space: pre-wrap;">${text}</div>
     `;
 
     Object.assign(this.tooltip.style, {
@@ -1004,12 +1004,6 @@ class NoteOperationComponent extends BasicOperationComponent {
       case "author":
         this.renderTooltipContent();
         break;
-      case "fontFamily":
-        this.tooltip.style.fontFamily = value;
-        break;
-      case "fontSize":
-        this.tooltip.style.fontSize = value + "px";
-        break;
       case "textColor":
         this.tooltip.style.color = value;
         break;
@@ -1028,6 +1022,7 @@ class NoteOperationComponent extends BasicOperationComponent {
     textColor = "#000000",
     fontFamily = "Helvetica",
     fontSize = 12,
+    author = "User",
   ) => {
     return {
       type: "note",
@@ -1044,7 +1039,7 @@ class NoteOperationComponent extends BasicOperationComponent {
       textColor: textColor,
       fontFamily: fontFamily,
       fontSize: fontSize,
-      author: "User",
+      author: author,
       opacity: 1.0,
     };
   };
@@ -1066,6 +1061,7 @@ class WatermarkOperationComponent extends BasicOperationComponent {
     this.shadow.style.paddingTop = "1px";
     this.shadow.contentEditable = false;
     this.shadow.style.pointerEvents = "none"; // Watermarks shouldn't be editable
+    this.shadow.style.textAlign = this.operation.alignment || "center";
 
     this.wrapperContainer.appendChild(this.shadow);
     this.initializeOperation();
@@ -1174,6 +1170,9 @@ class WatermarkOperationComponent extends BasicOperationComponent {
       case "underline":
         this.shadow.style.textDecoration = value ? "underline" : "none";
         break;
+      case "alignment":
+        this.shadow.style.textAlign = value;
+        break;
       case "rotation":
         this.wrapperContainer.style.transform = `rotate(${value}deg)`;
         break;
@@ -1195,6 +1194,7 @@ class WatermarkOperationComponent extends BasicOperationComponent {
     bold = false,
     italic = false,
     underline = false,
+    alignment = "center",
     groupId = null,
   ) => {
     return {
@@ -1219,6 +1219,7 @@ class WatermarkOperationComponent extends BasicOperationComponent {
       bold: bold,
       italic: italic,
       underline: underline,
+      alignment: alignment,
       groupId: groupId,
     };
   };

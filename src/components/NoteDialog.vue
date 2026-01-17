@@ -31,7 +31,7 @@
   </BaseDialog>
 </template>
 
-<script>
+<script lang="ts">
 import { ref, watch } from 'vue';
 import BaseDialog from './BaseDialog.vue';
 
@@ -78,44 +78,28 @@ export default {
 }
 </script>
 <style scoped>
+@reference "../css/tailwind.css";
 .note-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  @apply flex flex-col gap-2;
 }
 
 .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  @apply flex flex-col gap-2;
 }
 
 .form-group label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
+  @apply text-sm font-medium text-gray-700;
 }
 
 .form-input,
 .form-textarea {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.25rem;
-  outline: none;
+  @apply w-full p-2 border border-gray-300 rounded outline-none transition-colors duration-200;
+  @apply focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10;
   font-family: inherit;
-  transition: border-color 0.2s;
-}
-
-.form-input:focus,
-.form-textarea:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .form-textarea {
-  min-height: 100px;
-  resize: vertical;
+  @apply min-h-[100px] resize-y;
 }
 
 </style>
