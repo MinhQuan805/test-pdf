@@ -32,39 +32,42 @@
 </template>
 
 <script lang="ts">
-import { ref, watch } from 'vue';
-import BaseDialog from './BaseDialog.vue';
+import { ref, watch } from "vue";
+import BaseDialog from "./BaseDialog.vue";
 
 export default {
-  name: 'NoteDialog',
+  name: "NoteDialog",
   components: {
     BaseDialog,
   },
   props: {
     show: Boolean,
     text: String,
-    author: String
+    author: String,
   },
-  emits: ['close', 'confirm'],
+  emits: ["close", "confirm"],
   setup(props, { emit }) {
-    const localText = ref('');
-    const localAuthor = ref('');
+    const localText = ref("");
+    const localAuthor = ref("");
 
-    watch(() => props.show, (newVal) => {
-      if (newVal) {
-        localText.value = props.text || '';
-        localAuthor.value = props.author || 'User';
-      }
-    });
+    watch(
+      () => props.show,
+      (newVal) => {
+        if (newVal) {
+          localText.value = props.text || "";
+          localAuthor.value = props.author || "User";
+        }
+      },
+    );
 
     const close = () => {
-      emit('close');
+      emit("close");
     };
 
     const confirm = () => {
-      emit('confirm', {
+      emit("confirm", {
         text: localText.value,
-        author: localAuthor.value
+        author: localAuthor.value,
       });
     };
 
@@ -72,10 +75,10 @@ export default {
       localText,
       localAuthor,
       close,
-      confirm
+      confirm,
     };
-  }
-}
+  },
+};
 </script>
 <style scoped>
 @reference "../css/tailwind.css";
@@ -101,5 +104,4 @@ export default {
 .form-textarea {
   @apply min-h-[100px] resize-y;
 }
-
 </style>

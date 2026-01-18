@@ -12,10 +12,17 @@
               placeholder="Enter watermark text"
               rows="3"
             ></textarea>
-            <button v-if="watermarkData.text" @click="clearText" class="clear-btn" style="top: 10px; transform: none;">×</button>
+            <button
+              v-if="watermarkData.text"
+              @click="clearText"
+              class="clear-btn"
+              style="top: 10px; transform: none"
+            >
+              ×
+            </button>
           </div>
         </div>
-                <!-- Apply to -->
+        <!-- Apply to -->
         <div class="form-group">
           <label class="form-label">Apply to</label>
           <div class="radio-group">
@@ -197,7 +204,9 @@
       <template #footer>
         <button v-if="editData" @click="deleteWatermark" class="btn-danger mr-auto">Delete</button>
         <button @click="closeDialog" class="btn-secondary">Cancel</button>
-        <button @click="confirmWatermark" class="btn-primary">{{ editData ? 'Update' : 'Add' }} Watermark</button>
+        <button @click="confirmWatermark" class="btn-primary">
+          {{ editData ? "Update" : "Add" }} Watermark
+        </button>
       </template>
     </BaseDialog>
 
@@ -325,13 +334,21 @@ export default {
     },
     watermarkPositionStyle() {
       const positionMap = {
-        "top-left": { top: "5%", left: "5%", transform: `rotate(${this.watermarkData.rotation}deg)` },
+        "top-left": {
+          top: "5%",
+          left: "5%",
+          transform: `rotate(${this.watermarkData.rotation}deg)`,
+        },
         "top-center": {
           top: "5%",
           left: "50%",
           transform: `translateX(-50%) rotate(${this.watermarkData.rotation}deg)`,
         },
-        "top-right": { top: "5%", right: "5%", transform: `rotate(${this.watermarkData.rotation}deg)` },
+        "top-right": {
+          top: "5%",
+          right: "5%",
+          transform: `rotate(${this.watermarkData.rotation}deg)`,
+        },
         "middle-left": {
           top: "50%",
           left: "5%",
@@ -347,13 +364,21 @@ export default {
           right: "5%",
           transform: `translateY(-50%) rotate(${this.watermarkData.rotation}deg)`,
         },
-        "bottom-left": { bottom: "5%", left: "5%", transform: `rotate(${this.watermarkData.rotation}deg)` },
+        "bottom-left": {
+          bottom: "5%",
+          left: "5%",
+          transform: `rotate(${this.watermarkData.rotation}deg)`,
+        },
         "bottom-center": {
           bottom: "5%",
           left: "50%",
           transform: `translateX(-50%) rotate(${this.watermarkData.rotation}deg)`,
         },
-        "bottom-right": { bottom: "5%", right: "5%", transform: `rotate(${this.watermarkData.rotation}deg)` },
+        "bottom-right": {
+          bottom: "5%",
+          right: "5%",
+          transform: `rotate(${this.watermarkData.rotation}deg)`,
+        },
       };
       return positionMap[this.watermarkData.position] || positionMap.center;
     },
@@ -575,8 +600,6 @@ export default {
   @apply text-sm text-gray-700;
 }
 
-
-
 /* Font Style Buttons */
 .font-style-buttons {
   @apply flex gap-2;
@@ -643,5 +666,4 @@ export default {
 .btn-danger {
   @apply px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors font-medium;
 }
-
 </style>

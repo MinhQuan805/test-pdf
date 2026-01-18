@@ -429,7 +429,7 @@ describe("PDFOrganizer - Memory Leak & Performance Tests", () => {
               render: vi.fn(() => ({
                 promise: Promise.resolve(),
               })),
-            })
+            }),
           ),
           destroy: vi.fn(),
         }),

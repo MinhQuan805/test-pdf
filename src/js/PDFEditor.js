@@ -304,7 +304,7 @@ class PDFPage {
     );
   }
 
-    createNoteFromPDF(field, viewport) {
+  createNoteFromPDF(field, viewport) {
     const rect = field.rect;
     const id = field.id || `note_${Date.now()}_${Math.random()}`;
     const scale = viewport.scale;
@@ -327,7 +327,7 @@ class PDFPage {
     }
 
     // Get note content
-    const text = field.contentsObj?.str|| "";
+    const text = field.contentsObj?.str || "";
 
     // Author information
     const author = field.titleObj?.str || "User";
@@ -345,7 +345,7 @@ class PDFPage {
         "#000000",
         "Helvetica",
         12,
-        author
+        author,
       ),
       this.container,
     );
@@ -394,6 +394,7 @@ class PDFPage {
               0,
               "solid",
               settings.opacity || 0.5,
+              "highlight",
             ),
             this.container,
           );
@@ -408,6 +409,9 @@ class PDFPage {
               "#FFFFFF",
               "",
               0,
+              undefined,
+              undefined,
+              "white-out",
             ),
             this.container,
           );
@@ -428,6 +432,7 @@ class PDFPage {
               settings.borderWidth || 2,
               "solid",
               settings.opacity || 1.0,
+              settings.subType,
             ),
             this.container,
           );

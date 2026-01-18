@@ -627,8 +627,8 @@
     <!-- Search Box -->
     <div v-if="showSearchBox" class="search-box">
       <div class="search-box-header">
-        <i class="fa-solid fa-search" style="color: #6c757d; margin-right: 8px;"></i>
-        <span style="font-weight: 500; color: #495057;">Find Text</span>
+        <i class="fa-solid fa-search" style="color: #6c757d; margin-right: 8px"></i>
+        <span style="font-weight: 500; color: #495057">Find Text</span>
         <button @click="closeSearchBox" class="search-close-btn" title="Close">
           <i class="fa-solid fa-times"></i>
         </button>
@@ -646,7 +646,11 @@
         />
         <div class="search-results" v-if="searchQuery">
           <span class="search-results-text">
-            {{ searchMatches.length > 0 ? `${currentMatchIndex + 1} of ${searchMatches.length}` : 'No results' }}
+            {{
+              searchMatches.length > 0
+                ? `${currentMatchIndex + 1} of ${searchMatches.length}`
+                : "No results"
+            }}
           </span>
           <button
             @click="findPrevious"
@@ -674,7 +678,7 @@
       class="text-selection-toolbar"
       :style="{
         top: `${textSelectionToolbarPosition.top}px`,
-        left: `${textSelectionToolbarPosition.left}px`
+        left: `${textSelectionToolbarPosition.left}px`,
       }"
       @mousedown.stop
     >
@@ -683,7 +687,7 @@
       </button>
       <div class="toolbar-divider"></div>
       <button @click="highlightSelectedText" class="toolbar-btn" title="Highlight">
-        <i class="fa-solid fa-highlighter" style="color: #facc15;"></i> Highlight
+        <i class="fa-solid fa-highlighter" style="color: #facc15"></i> Highlight
       </button>
       <div class="toolbar-divider"></div>
       <button @click="underlineSelectedText" class="toolbar-btn" title="Underline">
@@ -696,6 +700,10 @@
       <div class="toolbar-divider"></div>
       <button @click="linkSelectedText" class="toolbar-btn" title="Link">
         <i class="fa-solid fa-link"></i>
+      </button>
+      <div class="toolbar-divider"></div>
+      <button @click="removeSelectedTextEffects" class="toolbar-btn" title="Remove Formatting">
+        <i class="fa-solid fa-eraser"></i>
       </button>
     </div>
 
@@ -931,6 +939,7 @@ import NoteDialog from "./components/NoteDialog.vue";
 import WatermarkDialog from "./components/WatermarkDialog.vue";
 import PaginationBar from "./components/PaginationBar.vue";
 import { freehandDrawing } from "./utils/FreehandDrawing.js";
+import { textSelection } from "./utils/TextSelection.js";
 
 export default {
   name: "App",
@@ -1116,7 +1125,7 @@ export default {
 
     // Search state
     const showSearchBox = ref(false);
-    const searchQuery = ref('');
+    const searchQuery = ref("");
     const searchMatches = ref([]);
     const currentMatchIndex = ref(0);
     const searchInput = ref(null);
@@ -1125,6 +1134,12 @@ export default {
     const showTextSelectionToolbar = ref(false);
     const textSelectionToolbarPosition = ref({ top: 0, left: 0 });
     const currentSelectionRange = ref(null);
+
+    // Drag-to-select text state
+    const isSelectingText = ref(false);
+    const selectStartPos = ref({ x: 0, y: 0 });
+    const selectCurrentPos = ref({ x: 0, y: 0 });
+    const selectRectElement = ref(null);
 
     // Image dialog functions - simplified
     const openImageDialog = (page, id, x, y, width, height) => {
@@ -1224,7 +1239,7 @@ export default {
           x,
           y,
           size,
-          size
+          size,
         );
         if (component) component.setSelected(true);
       } else if (editingNoteOperation.value) {
@@ -1298,7 +1313,7 @@ export default {
                     watermarkData.alignment,
                     watermarkData.position,
                     pageWidth,
-                    pageHeight
+                    pageHeight,
                   );
                   op.x = layout.x;
                   op.y = layout.y;
@@ -1312,11 +1327,12 @@ export default {
         return;
       }
 
-      const pages = watermarkData.pages === "all" ?
-        Array.from({ length: totalPages.value }, (_, i) => i + 1) :
-        watermarkData.pages;
+      const pages =
+        watermarkData.pages === "all"
+          ? Array.from({ length: totalPages.value }, (_, i) => i + 1)
+          : watermarkData.pages;
       const groupId = `wm-group-${Date.now()}`;
-      pages.forEach(pageNum => {
+      pages.forEach((pageNum) => {
         if (pageNum > 0 && pageNum <= totalPages.value) {
           const page = pdfEditor.pdfPages[pageNum - 1];
           if (page) {
@@ -1337,7 +1353,7 @@ export default {
               watermarkData.alignment,
               watermarkData.position,
               pageWidth,
-              pageHeight
+              pageHeight,
             );
 
             const positions = [{ x: layout.x, y: layout.y }];
@@ -1367,7 +1383,7 @@ export default {
                 pos.x,
                 pos.y,
                 textWidth,
-                textHeight
+                textHeight,
               );
             });
           }
@@ -1379,7 +1395,17 @@ export default {
     };
 
     // Helper function to calculate watermark dimensions and position
-    const calculateWatermarkLayout = (text, fontSize, fontFamily, bold, italic, alignment, position, pageWidth, pageHeight) => {
+    const calculateWatermarkLayout = (
+      text,
+      fontSize,
+      fontFamily,
+      bold,
+      italic,
+      alignment,
+      position,
+      pageWidth,
+      pageHeight,
+    ) => {
       // Calculate text dimensions
       const temp = document.createElement("div");
       temp.style.position = "absolute";
@@ -1406,7 +1432,7 @@ export default {
         "top-center": { x: (pageWidth - width) / 2, y: 0 },
         "top-right": { x: pageWidth - width - 0, y: 0 },
         "middle-left": { x: 0, y: (pageHeight - height) / 2 },
-        "center": { x: (pageWidth - width) / 2, y: (pageHeight - height) / 2 },
+        center: { x: (pageWidth - width) / 2, y: (pageHeight - height) / 2 },
         "middle-right": { x: pageWidth - width - 0, y: (pageHeight - height) / 2 },
         "bottom-left": { x: 0, y: pageHeight - height - 0 },
         "bottom-center": { x: (pageWidth - width) / 2, y: pageHeight - height },
@@ -1482,20 +1508,20 @@ export default {
       const component = e.detail.target;
       const operation = component.getOperation();
 
-      if (operation.type !== 'watermark' || !operation.groupId) return;
+      if (operation.type !== "watermark" || !operation.groupId) return;
 
       const { x, y, groupId } = operation;
 
       if (pdfEditor && pdfEditor.pdfPages) {
-        pdfEditor.pdfPages.forEach(page => {
-          const components = page.container.getElementsByClassName('watermark-component');
-          Array.from(components).forEach(el => {
+        pdfEditor.pdfPages.forEach((page) => {
+          const components = page.container.getElementsByClassName("watermark-component");
+          Array.from(components).forEach((el) => {
             if (el.component && el.component !== component) {
-               const op = el.component.getOperation();
-               if (op.groupId === groupId) {
-                 op.x = x;
-                 op.y = y;
-               }
+              const op = el.component.getOperation();
+              if (op.groupId === groupId) {
+                op.x = x;
+                op.y = y;
+              }
             }
           });
         });
@@ -1731,6 +1757,9 @@ export default {
               if (element === canvas) {
                 event.stopPropagation();
                 page.setSelected();
+
+                // Bắt đầu drag-to-select text
+                startTextSelection(event);
               }
               return;
             }
@@ -1938,6 +1967,12 @@ export default {
           });
 
           element.addEventListener("mousemove", (event) => {
+            // Handle drag-to-select text
+            if (isSelectingText.value) {
+              updateTextSelection(event);
+              return;
+            }
+
             if (!isDrawing.value || selectedTool.value === "select") return;
 
             event.preventDefault();
@@ -2097,6 +2132,12 @@ export default {
           });
 
           element.addEventListener("mouseup", (event) => {
+            // Handle drag-to-select text
+            if (isSelectingText.value) {
+              endTextSelection(event);
+              return;
+            }
+
             if (!isDrawing.value || selectedTool.value === "select") return;
 
             event.preventDefault();
@@ -2672,7 +2713,7 @@ export default {
     };
 
     const clearSearch = () => {
-      searchQuery.value = '';
+      searchQuery.value = "";
       searchMatches.value = [];
       currentMatchIndex.value = 0;
       clearHighlights();
@@ -2698,11 +2739,11 @@ export default {
       }
 
       // Search in text layers
-      const textLayers = document.querySelectorAll('.textLayer');
+      const textLayers = document.querySelectorAll(".textLayer");
       textLayers.forEach((textLayer, pageIndex) => {
-        const spans = textLayer.querySelectorAll('span');
+        const spans = textLayer.querySelectorAll("span");
         spans.forEach((span) => {
-          const text = span.textContent || '';
+          const text = span.textContent || "";
           const searchText = searchQuery.value.toLowerCase();
           const lowerText = text.toLowerCase();
 
@@ -2713,7 +2754,7 @@ export default {
               pageIndex,
               startIndex: index,
               length: searchQuery.value.length,
-              text: text.substring(index, index + searchQuery.value.length)
+              text: text.substring(index, index + searchQuery.value.length),
             });
             index = lowerText.indexOf(searchText, index + 1);
           }
@@ -2743,7 +2784,7 @@ export default {
       // Apply highlights to each element
       matchesByElement.forEach((matches, element) => {
         const text = element.textContent;
-        let html = '';
+        let html = "";
         let lastIndex = 0;
 
         // Sort matches by start index
@@ -2756,8 +2797,8 @@ export default {
           // Add highlighted match
           const matched = text.substring(match.startIndex, match.startIndex + match.length);
           const isCurrent = match.matchIndex === index;
-          const bgColor = isCurrent ? '#ff9800' : '#ffeb3b';
-          const className = isCurrent ? 'search-highlight-current' : 'search-highlight';
+          const bgColor = isCurrent ? "#ff9800" : "#ffeb3b";
+          const className = isCurrent ? "search-highlight-current" : "search-highlight";
 
           html += `<mark class="${className}" style="background-color: ${bgColor}; color: #000; padding: 0; border-radius: 2px;">${escapeHtml(matched)}</mark>`;
 
@@ -2772,9 +2813,9 @@ export default {
 
       // Scroll to current match
       const currentMatch = searchMatches.value[index];
-      const highlightedElement = currentMatch.element.querySelector('.search-highlight-current');
+      const highlightedElement = currentMatch.element.querySelector(".search-highlight-current");
       if (highlightedElement) {
-        highlightedElement.scrollIntoView({ block: 'center' });
+        highlightedElement.scrollIntoView({ block: "center" });
       }
     };
 
@@ -2799,7 +2840,8 @@ export default {
 
     const findPrevious = () => {
       if (searchMatches.value.length === 0) return;
-      const prevIndex = (currentMatchIndex.value - 1 + searchMatches.value.length) % searchMatches.value.length;
+      const prevIndex =
+        (currentMatchIndex.value - 1 + searchMatches.value.length) % searchMatches.value.length;
       highlightMatch(prevIndex);
     };
 
@@ -3120,115 +3162,107 @@ export default {
 
     // Text Selection Toolbar functions
     const handleDocumentMouseUp = (e) => {
-      // If clicking inside the toolbar, ignore
-      if (e.target.closest('.text-selection-toolbar')) return;
-
-      const selection = window.getSelection();
-      if (selection && !selection.isCollapsed) {
-        const range = selection.getRangeAt(0);
-
-        // Check if selection is inside a PDF page
-        let container = range.commonAncestorContainer;
-        if (container.nodeType === 3) container = container.parentNode;
-
-        if (container.closest('.pdf-page')) {
-          const rect = range.getBoundingClientRect();
-          // Position toolbar above the selection
-          textSelectionToolbarPosition.value = {
-            top: rect.top - 50 + window.scrollY,
-            left: rect.left + (rect.width / 2) - 150 // Centered roughly
-          };
-
-          // Ensure it doesn't go off screen
-          if (textSelectionToolbarPosition.value.left < 10) textSelectionToolbarPosition.value.left = 10;
-          if (textSelectionToolbarPosition.value.top < 10) textSelectionToolbarPosition.value.top = rect.bottom + 10 + window.scrollY;
-
-          showTextSelectionToolbar.value = true;
-          currentSelectionRange.value = range;
-          return;
-        }
+      const result = textSelection.handleSelection(e);
+      if (result) {
+        showTextSelectionToolbar.value = result.show;
+        textSelectionToolbarPosition.value = result.position;
+        currentSelectionRange.value = result.range;
       }
-
-      showTextSelectionToolbar.value = false;
-      currentSelectionRange.value = null;
     };
 
     const applyTextSelectionAction = (actionType, options = {}) => {
-      if (!currentSelectionRange.value || !pdfEditor) return;
+      const shouldHideToolbar = textSelection.applyAction(actionType, pdfEditor, zoomLevel.value, {
+        openLinkDialog,
+        showToast,
+      });
 
-      const range = currentSelectionRange.value;
-      const rects = range.getClientRects();
-      const zoom = zoomLevel.value;
-
-      let container = range.commonAncestorContainer;
-      if (container.nodeType === 3) container = container.parentNode;
-      const pageEl = container.closest('.pdf-page');
-
-      if (pageEl) {
-        const pageObj = pdfEditor.pdfPages.find(p => p.container === pageEl);
-        if (pageObj) {
-          const pageRect = pageEl.getBoundingClientRect();
-
-          if (actionType === 'link') {
-             // Calculate union rect for link
-             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-             for (const rect of rects) {
-                 const x = (rect.left - pageRect.left) / zoom;
-                 const y = (rect.top - pageRect.top) / zoom;
-                 const w = rect.width / zoom;
-                 const h = rect.height / zoom;
-                 minX = Math.min(minX, x);
-                 minY = Math.min(minY, y);
-                 maxX = Math.max(maxX, x + w);
-                 maxY = Math.max(maxY, y + h);
-             }
-             const id = `link-${Date.now()}`;
-             openLinkDialog(pageObj, id, minX, minY, maxX - minX, maxY - minY);
-          } else {
-            for (const rect of rects) {
-              const x = (rect.left - pageRect.left) / zoom;
-              const y = (rect.top - pageRect.top) / zoom;
-              const width = rect.width / zoom;
-              const height = rect.height / zoom;
-
-              if (width <= 0 || height <= 0) continue;
-
-              const id = `annot-${Date.now()}-${Math.random()}`;
-
-              if (actionType === 'highlight') {
-                pageObj.createComponentWithDimensions('rectangle', { subType: 'highlight', fill: '#FFFF00', opacity: 0.5 }, id, x, y, width, height);
-              } else if (actionType === 'underline') {
-                const underlineHeight = 2;
-                pageObj.createComponentWithDimensions('rectangle', { fill: '#000000', opacity: 1 }, id, x, y + height - underlineHeight, width, underlineHeight);
-              } else if (actionType === 'strikethrough') {
-                const strikeHeight = 2;
-                pageObj.createComponentWithDimensions('rectangle', { fill: '#FF0000', opacity: 1 }, id, x, y + (height / 2) - (strikeHeight / 2), width, strikeHeight);
-              }
-            }
-          }
-        }
-      }
-
-      if (actionType !== 'link') {
-        window.getSelection().removeAllRanges();
+      if (shouldHideToolbar) {
         showTextSelectionToolbar.value = false;
       }
     };
 
     const copySelectedText = () => {
-      if (currentSelectionRange.value) {
-        const text = currentSelectionRange.value.toString();
-        navigator.clipboard.writeText(text);
-        showToast("Text copied to clipboard", "success");
+      if (textSelection.copyText()) {
         showTextSelectionToolbar.value = false;
-        window.getSelection().removeAllRanges();
       }
     };
 
-    const highlightSelectedText = () => applyTextSelectionAction('highlight');
-    const underlineSelectedText = () => applyTextSelectionAction('underline');
-    const strikethroughSelectedText = () => applyTextSelectionAction('strikethrough');
-    const linkSelectedText = () => applyTextSelectionAction('link');
+    const highlightSelectedText = () => applyTextSelectionAction("highlight");
+    const underlineSelectedText = () => applyTextSelectionAction("underline");
+    const strikethroughSelectedText = () => applyTextSelectionAction("strikethrough");
+    const linkSelectedText = () => applyTextSelectionAction("link");
+    const removeSelectedTextEffects = () => applyTextSelectionAction("remove");
+
+    // Drag-to-select text functions
+    const startTextSelection = (e) => {
+      // Chỉ bật khi tool là "select" và không click vào component
+      if (selectedTool.value !== "select") return;
+      if (e.target.closest(".component")) return;
+      if (e.target.closest(".text-selection-toolbar")) return;
+
+      const pageElement = e.target.closest(".pdf-page");
+      if (!pageElement) return;
+
+      isSelectingText.value = true;
+      selectStartPos.value = { x: e.clientX, y: e.clientY };
+      selectCurrentPos.value = { x: e.clientX, y: e.clientY };
+
+      // Tạo selection rectangle element
+      if (!selectRectElement.value) {
+        selectRectElement.value = document.createElement("div");
+        selectRectElement.value.className = "text-selection-rectangle";
+        document.body.appendChild(selectRectElement.value);
+      }
+
+      updateSelectionRectangle();
+      e.preventDefault();
+    };
+
+    const updateTextSelection = (e) => {
+      if (!isSelectingText.value) return;
+
+      selectCurrentPos.value = { x: e.clientX, y: e.clientY };
+      updateSelectionRectangle();
+    };
+
+    const updateSelectionRectangle = () => {
+      if (!selectRectElement.value) return;
+
+      const left = Math.min(selectStartPos.value.x, selectCurrentPos.value.x);
+      const top = Math.min(selectStartPos.value.y, selectCurrentPos.value.y);
+      const width = Math.abs(selectCurrentPos.value.x - selectStartPos.value.x);
+      const height = Math.abs(selectCurrentPos.value.y - selectStartPos.value.y);
+
+      selectRectElement.value.style.left = `${left}px`;
+      selectRectElement.value.style.top = `${top}px`;
+      selectRectElement.value.style.width = `${width}px`;
+      selectRectElement.value.style.height = `${height}px`;
+      selectRectElement.value.style.display = "block";
+    };
+
+    const endTextSelection = (e) => {
+      if (!isSelectingText.value) return;
+
+      const pageElement = e.target.closest(".pdf-page");
+      if (pageElement) {
+        // Gọi hàm select text trong vùng chữ nhật
+        const selectionRect = {
+          startX: selectStartPos.value.x,
+          startY: selectStartPos.value.y,
+          endX: selectCurrentPos.value.x,
+          endY: selectCurrentPos.value.y
+        };
+
+        textSelection.selectTextInRectangle(selectionRect, pageElement);
+      }
+
+      // Ẩn selection rectangle
+      if (selectRectElement.value) {
+        selectRectElement.value.style.display = "none";
+      }
+
+      isSelectingText.value = false;
+    };
 
     onMounted(async () => {
       console.log(`onMounted - starting`);
@@ -3782,6 +3816,7 @@ export default {
       underlineSelectedText,
       strikethroughSelectedText,
       linkSelectedText,
+      removeSelectedTextEffects,
     };
   },
 };
@@ -3967,8 +4002,7 @@ export default {
 
     --scale-x: 1;
     --rotate: 0deg;
-    transform: rotate(var(--rotate)) scaleX(var(--scale-x))
-      scale(var(--min-font-size-inv));
+    transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
   }
 
   .markedContent {
@@ -4177,5 +4211,15 @@ export default {
   height: 20px;
   background: #e0e0e0;
   margin: 0 4px;
+}
+
+/* Text selection rectangle overlay */
+.text-selection-rectangle {
+  position: fixed;
+  border: 2px solid #007acc;
+  background: rgba(0, 122, 204, 0.1);
+  pointer-events: none;
+  z-index: 9999;
+  display: none;
 }
 </style>

@@ -362,6 +362,7 @@ class RectangleOperationComponent extends BasicOperationComponent {
     borderWidth = 2,
     borderStyle = "solid",
     opacity = 1.0,
+    subType = null,
   ) => {
     return {
       type: "rectangle",
@@ -378,6 +379,7 @@ class RectangleOperationComponent extends BasicOperationComponent {
       borderColor: borderColor,
       borderWidth: borderWidth,
       borderStyle: borderStyle,
+      subType: subType,
     };
   };
 }
@@ -970,7 +972,15 @@ class NoteOperationComponent extends BasicOperationComponent {
 
   renderTooltipContent = () => {
     const op = this.getOperation();
-    const { text = "", author = "User", backgroundColor = "#ffff88", textColor = "#000000", fontFamily = "Helvetica", fontSize = 12, color = "#FFFF00" } = op;
+    const {
+      text = "",
+      author = "User",
+      backgroundColor = "#ffff88",
+      textColor = "#000000",
+      fontFamily = "Helvetica",
+      fontSize = 12,
+      color = "#FFFF00",
+    } = op;
 
     this.tooltip.innerHTML = `
       <div style="padding: 5px; border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; font-weight: bold;">
@@ -1083,7 +1093,8 @@ class WatermarkOperationComponent extends BasicOperationComponent {
     temp.style.overflowWrap = "break-word";
     temp.style.display = "inline-block";
     temp.style.lineHeight = "1.2";
-    temp.style.font = this.shadow.style.font || `${this.operation.fontSize}px ${this.operation.fontFamily}`;
+    temp.style.font =
+      this.shadow.style.font || `${this.operation.fontSize}px ${this.operation.fontFamily}`;
     temp.style.fontSize = this.shadow.style.fontSize;
     temp.style.fontFamily = this.shadow.style.fontFamily;
     temp.style.fontWeight = this.shadow.style.fontWeight;
