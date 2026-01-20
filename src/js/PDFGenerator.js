@@ -240,6 +240,7 @@ class PDFGenerator {
     const italic = operation.italic || false;
     const underline = operation.underline || false;
     const rotation = parseFloat(operation.rotation) || 0;
+    const alignment = operation.alignment || "center";
 
     // Adjust font family based on bold/italic flags
     if (fontFamily === "Helvetica") {
@@ -308,16 +309,7 @@ class PDFGenerator {
       embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
     }
 
-    let wordBreaks = [];
-
-    if (fontWordBreak === "break-all") {
-      wordBreaks.push("");
-    } else if (fontWordBreak === "break-word") {
-      wordBreaks.push(" ");
-    }
-
     // Calculate text dimensions
-    // For multi-line text, calculate the width of the longest line
     const lines = text.split("\n");
     let textWidth = 0;
     lines.forEach((line) => {
@@ -326,8 +318,6 @@ class PDFGenerator {
         textWidth = lineWidth;
       }
     });
-    // Calculate total height: first line takes fontSize, subsequent lines are spaced by fontLineHeight
-    const textHeight = lines.length > 1 ? fontSize + (lines.length - 1) * fontLineHeight : fontSize;
 
     // Calculate center of the component in PDF coordinates
     // HTML (0,0) is top-left. PDF (0,0) is bottom-left.
@@ -340,60 +330,68 @@ class PDFGenerator {
     // Rotation
     const pdfRotation = -rotation;
     const rad = (pdfRotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
 
-    // Center of text relative to the drawing origin (baseline of first line)
-    const u = textWidth / 2;
+    // Vertical offset for the first line baseline from center
     const v = (fontSize - (lines.length - 1) * fontLineHeight) / 2;
 
-    // Calculate offset to place the text such that its center is at (pdfCx, pdfCy)
-    const rx = u * Math.cos(rad) - v * Math.sin(rad);
-    const ry = u * Math.sin(rad) + v * Math.cos(rad);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineWidth = embedFont.widthOfTextAtSize(line, fontSize);
 
-    const drawX = pdfCx - rx;
-    const drawY = pdfCy - ry;
+      let xLocal;
+      if (alignment === "left") {
+        xLocal = -textWidth / 2;
+      } else if (alignment === "right") {
+        xLocal = textWidth / 2 - lineWidth;
+      } else {
+        // center
+        xLocal = -lineWidth / 2;
+      }
 
-    // Draw all lines as a single text block with line breaks
-    await pdfPage.drawText(text, {
-      x: drawX,
-      y: drawY,
-      color: PDFLib.rgb(fontColor.red, fontColor.green, fontColor.blue),
-      font: embedFont,
-      size: fontSize,
-      lineHeight: fontLineHeight,
-      opacity: opacity,
-      wordBreaks: wordBreaks,
-      maxWidth: width,
-      rotate: PDFLib.degrees(pdfRotation),
-    });
+      const yLocal = -v - i * fontLineHeight;
 
-    // Draw underline if specified
-    if (underline) {
-      const underlineOffset = -2; // 2 units below baseline
+      const xRot = xLocal * cos - yLocal * sin;
+      const yRot = xLocal * sin + yLocal * cos;
 
-      // Start point relative to origin (unrotated)
-      const startX_rel = 0;
-      const startY_rel = underlineOffset;
+      const drawX = pdfCx + xRot;
+      const drawY = pdfCy + yRot;
 
-      // End point relative to origin (unrotated)
-      const endX_rel = textWidth;
-      const endY_rel = underlineOffset;
-
-      // Rotate points
-      const rotatePoint = (px, py) => ({
-        x: px * Math.cos(rad) - py * Math.sin(rad),
-        y: px * Math.sin(rad) + py * Math.cos(rad),
-      });
-
-      const startRot = rotatePoint(startX_rel, startY_rel);
-      const endRot = rotatePoint(endX_rel, endY_rel);
-
-      pdfPage.drawLine({
-        start: { x: drawX + startRot.x, y: drawY + startRot.y },
-        end: { x: drawX + endRot.x, y: drawY + endRot.y },
-        thickness: Math.max(1, fontSize / 12),
+      await pdfPage.drawText(line, {
+        x: drawX,
+        y: drawY,
         color: PDFLib.rgb(fontColor.red, fontColor.green, fontColor.blue),
+        font: embedFont,
+        size: fontSize,
         opacity: opacity,
+        rotate: PDFLib.degrees(pdfRotation),
       });
+
+      // Draw underline if specified
+      if (underline) {
+        const underlineOffset = -2; // 2 units below baseline
+
+        const uStart = { x: xLocal, y: yLocal + underlineOffset };
+        const uEnd = { x: xLocal + lineWidth, y: yLocal + underlineOffset };
+
+        const rStart = {
+          x: uStart.x * cos - uStart.y * sin,
+          y: uStart.x * sin + uStart.y * cos,
+        };
+        const rEnd = {
+          x: uEnd.x * cos - uEnd.y * sin,
+          y: uEnd.x * sin + uEnd.y * cos,
+        };
+
+        pdfPage.drawLine({
+          start: { x: pdfCx + rStart.x, y: pdfCy + rStart.y },
+          end: { x: pdfCx + rEnd.x, y: pdfCy + rEnd.y },
+          thickness: Math.max(1, fontSize / 12),
+          color: PDFLib.rgb(fontColor.red, fontColor.green, fontColor.blue),
+          opacity: opacity,
+        });
+      }
     }
   }
 

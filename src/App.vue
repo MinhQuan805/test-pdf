@@ -686,23 +686,31 @@
         <i class="fa-regular fa-copy"></i> Copy
       </button>
       <div class="toolbar-divider"></div>
-      <button @click="highlightSelectedText" class="toolbar-btn" title="Highlight">
+      <button @click="applyTextSelectionAction('highlight')" class="toolbar-btn" title="Highlight">
         <i class="fa-solid fa-highlighter" style="color: #facc15"></i> Highlight
       </button>
       <div class="toolbar-divider"></div>
-      <button @click="underlineSelectedText" class="toolbar-btn" title="Underline">
+      <button @click="applyTextSelectionAction('underline')" class="toolbar-btn" title="Underline">
         <i class="fa-solid fa-underline"></i>
       </button>
       <div class="toolbar-divider"></div>
-      <button @click="strikethroughSelectedText" class="toolbar-btn" title="Strikethrough">
+      <button
+        @click="applyTextSelectionAction('strikethrough')"
+        class="toolbar-btn"
+        title="Strikethrough"
+      >
         <i class="fa-solid fa-strikethrough"></i>
       </button>
       <div class="toolbar-divider"></div>
-      <button @click="linkSelectedText" class="toolbar-btn" title="Link">
+      <button @click="applyTextSelectionAction('link')" class="toolbar-btn" title="Link">
         <i class="fa-solid fa-link"></i>
       </button>
       <div class="toolbar-divider"></div>
-      <button @click="removeSelectedTextEffects" class="toolbar-btn" title="Remove Formatting">
+      <button
+        @click="applyTextSelectionAction('remove')"
+        class="toolbar-btn"
+        title="Remove Formatting"
+      >
         <i class="fa-solid fa-eraser"></i>
       </button>
     </div>
@@ -1757,7 +1765,7 @@ export default {
                 event.stopPropagation();
                 page.setSelected();
 
-                // Bắt đầu drag-to-select text
+                // Drag To Select text
                 startTextSelection(event);
               }
               return;
@@ -3197,12 +3205,6 @@ export default {
       }
     };
 
-    const highlightSelectedText = () => applyTextSelectionAction("highlight");
-    const underlineSelectedText = () => applyTextSelectionAction("underline");
-    const strikethroughSelectedText = () => applyTextSelectionAction("strikethrough");
-    const linkSelectedText = () => applyTextSelectionAction("link");
-    const removeSelectedTextEffects = () => applyTextSelectionAction("remove");
-
     // Drag-to-select text functions
     const startTextSelection = (e) => {
       // Chỉ bật khi tool là "select" và không click vào component
@@ -3822,6 +3824,7 @@ export default {
       showTextSelectionToolbar,
       textSelectionToolbarPosition,
       copySelectedText,
+      applyTextSelectionAction,
       highlightSelectedText,
       underlineSelectedText,
       strikethroughSelectedText,

@@ -3,341 +3,289 @@ export class TextSelection {
     this.currentSelectionRange = null;
   }
 
-  // Select text within rectangle area
+  // Utility to check intersection between 2 rectangles
+  rectsIntersect(r1, r2) {
+    return !(
+      r2.left >= r1.right ||
+      r2.right <= r1.left ||
+      r2.top >= r1.bottom ||
+      r2.bottom <= r1.top
+    );
+  }
+
+  // Utility to get text offset from coordinates
+  getOffset(span, x) {
+    const rect = span.getBoundingClientRect();
+    const textNode = span.firstChild;
+    // Clamp x within span limits
+    const testX = Math.max(rect.left, Math.min(rect.right - 1, x));
+
+    if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(testX, (rect.top + rect.bottom) / 2);
+      if (pos) {
+        if (pos.offsetNode === textNode) return pos.offset;
+        if (pos.offsetNode === span) return pos.offset === 0 ? 0 : textNode?.length || 0;
+      }
+    }
+    return null;
+  }
+
   selectTextInRectangle(rect, pageElement) {
     if (!pageElement) return false;
-
     const textLayer = pageElement.querySelector(".textLayer");
     if (!textLayer) return false;
 
-    const textSpans = textLayer.querySelectorAll("span");
-    if (textSpans.length === 0) return false;
-
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-
-    const selectionRect = {
+    // Find spans located within the selection area
+    const spans = Array.from(textLayer.querySelectorAll("span"));
+    const selRect = {
       left: Math.min(rect.startX, rect.endX),
       right: Math.max(rect.startX, rect.endX),
       top: Math.min(rect.startY, rect.endY),
       bottom: Math.max(rect.startY, rect.endY),
     };
 
-    // Find all text spans that intersect with the rectangle
-    const spansInRect = [];
-    textSpans.forEach((span) => {
-      const spanRect = span.getBoundingClientRect();
-
-      // Check for intersection
-      if (
-        spanRect.left < selectionRect.right &&
-        spanRect.right > selectionRect.left &&
-        spanRect.top < selectionRect.bottom &&
-        spanRect.bottom > selectionRect.top
-      ) {
-        spansInRect.push(span);
-      }
-    });
+    const spansInRect = spans
+      .filter((span) => this.rectsIntersect(selRect, span.getBoundingClientRect()))
+      .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
 
     if (spansInRect.length === 0) return false;
 
-    // Sort spans by vertical position to ensure correct order (top to bottom)
-    spansInRect.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-
-    // Create range to select text from first span to last span
     try {
       const range = document.createRange();
-      const firstSpan = spansInRect[0];
-      const lastSpan = spansInRect[spansInRect.length - 1];
-
-      // Helper to get offset from point
-      const getOffset = (span, x) => {
-        const spanRect = span.getBoundingClientRect();
-        const centerY = (spanRect.top + spanRect.bottom) / 2;
-        // Clamp x to be within the span's horizontal bounds for hit testing
-        const testX = Math.max(spanRect.left, Math.min(spanRect.right - 1, x));
-        const textNode = span.firstChild;
-
-        if (document.caretPositionFromPoint) {
-          const pos = document.caretPositionFromPoint(testX, centerY);
-          if (pos) {
-            if (pos.offsetNode === textNode) return pos.offset;
-            if (pos.offsetNode === span) return pos.offset === 0 ? 0 : textNode?.length || 0;
-          }
-        }
-        return null;
-      };
-
-      // Get first and last text nodes
-      const firstTextNode = firstSpan.firstChild || firstSpan;
-      const lastTextNode = lastSpan.firstChild || lastSpan;
+      const first = spansInRect[0];
+      const last = spansInRect[spansInRect.length - 1];
 
       let startOffset = 0;
-      let endOffset = lastTextNode.length || 0;
+      let endOffset = (last.firstChild || last).length || 0;
 
-      // Calculate start offset if the selection starts inside the first span
-      const firstSpanRect = firstSpan.getBoundingClientRect();
-      if (selectionRect.left > firstSpanRect.left) {
-        const offset = getOffset(firstSpan, selectionRect.left);
-        if (offset !== null) startOffset = offset;
+      // Calculate precise offset if selection crosses the first/last span
+      if (selRect.left > first.getBoundingClientRect().left) {
+        const off = this.getOffset(first, selRect.left);
+        if (off !== null) startOffset = off;
+      }
+      if (selRect.right < last.getBoundingClientRect().right) {
+        const off = this.getOffset(last, selRect.right);
+        if (off !== null) endOffset = off;
       }
 
-      // Calculate end offset if the selection ends inside the last span
-      const lastSpanRect = lastSpan.getBoundingClientRect();
-      if (selectionRect.right < lastSpanRect.right) {
-        const offset = getOffset(lastSpan, selectionRect.right);
-        if (offset !== null) endOffset = offset;
-      }
+      range.setStart(first.firstChild || first, startOffset);
+      range.setEnd(last.firstChild || last, endOffset);
 
-      range.setStart(firstTextNode, startOffset);
-      range.setEnd(lastTextNode, endOffset);
-
-      selection.addRange(range);
+      window.getSelection().removeAllRanges();
+      window.getSelection().addRange(range);
       this.currentSelectionRange = range;
-
       return true;
-    } catch (error) {
-      console.error("Error selecting text:", error);
+    } catch (e) {
+      console.error("Error selecting text:", e);
       return false;
     }
-  }
-
-  // Check if two rectangles intersect
-  isIntersecting(rect1, rect2) {
-    return !(
-      rect1.right < rect2.left ||
-      rect1.left > rect2.right ||
-      rect1.bottom < rect2.top ||
-      rect1.top > rect2.bottom
-    );
   }
 
   handleSelection(e, toolbarSelector = ".text-selection-toolbar", pageSelector = ".pdf-page") {
     if (e.target.closest(toolbarSelector)) return null;
 
-    const selection = window.getSelection();
-    if (selection && !selection.isCollapsed) {
-      const range = selection.getRangeAt(0);
-      let container = range.commonAncestorContainer;
-      if (container.nodeType === 3) container = container.parentNode;
-
-      if (container.closest(pageSelector)) {
-        const rect = range.getBoundingClientRect();
-        this.currentSelectionRange = range;
-
-        let top = rect.top - 50 + window.scrollY;
-        let left = rect.left + rect.width / 2 - 150;
-
-        if (left < 10) left = 10;
-        if (top < 10) top = rect.bottom + 10 + window.scrollY;
-
-        return {
-          show: true,
-          position: { top, left },
-          range,
-        };
-      }
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) {
+      this.currentSelectionRange = null;
+      return { show: false, position: { top: 0, left: 0 }, range: null };
     }
 
-    this.currentSelectionRange = null;
-    return { show: false, position: { top: 0, left: 0 }, range: null };
+    const range = sel.getRangeAt(0);
+    const container =
+      range.commonAncestorContainer.nodeType === 3
+        ? range.commonAncestorContainer.parentNode
+        : range.commonAncestorContainer;
+
+    if (container.closest(pageSelector)) {
+      const rect = range.getBoundingClientRect();
+      this.currentSelectionRange = range;
+
+      let top = rect.top - 50 + window.scrollY;
+      let left = rect.left + rect.width / 2 - 150;
+
+      // Keep toolbar within the screen
+      if (left < 10) left = 10;
+      if (top < 10) top = rect.bottom + 10 + window.scrollY;
+
+      return { show: true, position: { top, left }, range };
+    }
+    return null;
   }
 
   copyText() {
-    if (this.currentSelectionRange) {
-      const text = this.currentSelectionRange.toString();
-      navigator.clipboard.writeText(text);
-      window.getSelection().removeAllRanges();
-      return true;
-    }
-    return false;
+    if (!this.currentSelectionRange) return false;
+    navigator.clipboard.writeText(this.currentSelectionRange.toString());
+    window.getSelection().removeAllRanges();
+    return true;
   }
 
-  // Check if two rectangles intersect (used for removing effects)
-  rectsIntersect(r1, r2) {
-    return !(r2.x >= r1.right || r2.right <= r1.x || r2.y >= r1.bottom || r2.bottom <= r1.y);
-  }
-
-  applyAction(actionType, pdfEditor, zoomLevel, callbacks = {}) {
+  applyAction(actionType, pdfEditor, zoom, callbacks = {}) {
     if (!this.currentSelectionRange || !pdfEditor) return false;
 
     const range = this.currentSelectionRange;
-    const rects = range.getClientRects();
-    const zoom = zoomLevel;
-
-    let container = range.commonAncestorContainer;
-    if (container.nodeType === 3) container = container.parentNode;
+    const container =
+      range.commonAncestorContainer.nodeType === 3
+        ? range.commonAncestorContainer.parentNode
+        : range.commonAncestorContainer;
     const pageEl = container.closest(".pdf-page");
+    const pageObj = pageEl ? pdfEditor.pdfPages.find((p) => p.container === pageEl) : null;
 
-    if (pageEl) {
-      const pageObj = pdfEditor.pdfPages.find((p) => p.container === pageEl);
-      if (pageObj) {
-        const pageRect = pageEl.getBoundingClientRect();
+    if (!pageObj) return false;
 
-        if (actionType === "link") {
-          let minX = Infinity,
-            minY = Infinity,
-            maxX = -Infinity,
-            maxY = -Infinity;
-          let hasValidRect = false;
-          for (const rect of rects) {
-            if (rect.width <= 0 || rect.height <= 0) continue;
+    const pageRect = pageEl.getBoundingClientRect();
+    // Helper to convert DOM coordinates to PDF coordinates
+    const toPdfRect = (r) => ({
+      x: (r.left - pageRect.left) / zoom,
+      y: (r.top - pageRect.top) / zoom,
+      width: r.width / zoom,
+      height: r.height / zoom,
+      right: (r.right - pageRect.left) / zoom,
+      bottom: (r.bottom - pageRect.top) / zoom,
+    });
 
-            const x = (rect.left - pageRect.left) / zoom;
-            const y = (rect.top - pageRect.top) / zoom;
-            const w = rect.width / zoom;
-            const h = rect.height / zoom;
-            minX = Math.min(minX, x);
-            minY = Math.min(minY, y);
-            maxX = Math.max(maxX, x + w);
-            maxY = Math.max(maxY, y + h);
-            hasValidRect = true;
-          }
-          if (hasValidRect && callbacks.openLinkDialog) {
-            const id = `link-${Date.now()}`;
-            callbacks.openLinkDialog(pageObj, id, minX, minY, maxX - minX, maxY - minY);
-            window.getSelection().removeAllRanges();
-            return true;
-          }
-        } else if (actionType === "remove") {
-          // Get list of rectangles in selection area
-          const selectionRects = Array.from(rects)
-            .map((rect) => ({
-              x: (rect.left - pageRect.left) / zoom,
-              y: (rect.top - pageRect.top) / zoom,
-              width: rect.width / zoom,
-              height: rect.height / zoom,
-              right: (rect.right - pageRect.left) / zoom,
-              bottom: (rect.bottom - pageRect.top) / zoom,
-            }))
-            .filter((r) => r.width > 0 && r.height > 0);
+    // Get list of rects from range
+    const rawRects = Array.from(range.getClientRects()).filter((r) => r.width > 0 && r.height > 0);
 
-          const components = pageEl.getElementsByClassName("component");
-          const componentsToRemove = [];
+    // Handle link creation
+    if (actionType === "link") {
+      if (!callbacks.openLinkDialog) return false;
+      // Calculate bounding box (Union) of all rects
+      const bounds = rawRects.reduce(
+        (acc, r) => {
+          const p = toPdfRect(r);
+          return {
+            minX: Math.min(acc.minX, p.x),
+            minY: Math.min(acc.minY, p.y),
+            maxX: Math.max(acc.maxX, p.right),
+            maxY: Math.max(acc.maxY, p.bottom),
+          };
+        },
+        { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+      );
 
-          // Find components (highlight, underline, strikethrough) that intersect with selection area
-          Array.from(components).forEach((el) => {
-            if (!el.component) return;
-            const op = el.component.getOperation();
-            const isEffect =
-              ["highlight", "underline", "strikethrough"].includes(op.subType) ||
-              op.type === "link";
+      if (bounds.minX !== Infinity) {
+        callbacks.openLinkDialog(
+          pageObj,
+          `link-${Date.now()}`,
+          bounds.minX,
+          bounds.minY,
+          bounds.maxX - bounds.minX,
+          bounds.maxY - bounds.minY,
+        );
+        window.getSelection().removeAllRanges();
+        return true;
+      }
+    }
 
-            if (isEffect) {
-              const compRect = {
-                x: op.x,
-                y: op.y,
-                width: op.width,
-                height: op.height,
-                right: op.x + op.width,
-                bottom: op.y + op.height,
-              };
+    // Handle removal of effects
+    if (actionType === "remove") {
+      const selectionRects = rawRects.map(toPdfRect);
+      const componentsToRemove = Array.from(pageEl.getElementsByClassName("component"))
+        .map((el) => el.component)
+        .filter((comp) => {
+          if (!comp) return false;
+          const op = comp.getOperation();
+          const isEffect =
+            ["highlight", "underline", "strikethrough"].includes(op.subType) || op.type === "link";
+          if (!isEffect) return false;
 
-              for (const selRect of selectionRects) {
-                if (this.rectsIntersect(compRect, selRect)) {
-                  componentsToRemove.push(el.component);
-                  break;
-                }
-              }
-            }
-          });
+          const compRect = {
+            left: op.x,
+            top: op.y,
+            right: op.x + op.width,
+            bottom: op.y + op.height,
+          };
+          // Check intersection with any rect in the selection area (using PDF coordinate logic)
+          return selectionRects.some((sel) =>
+            this.rectsIntersect(compRect, {
+              left: sel.x,
+              top: sel.y,
+              right: sel.right,
+              bottom: sel.bottom,
+            }),
+          );
+        });
 
-          componentsToRemove.forEach((comp) => comp.deleteComponent());
+      componentsToRemove.forEach((c) => c.deleteComponent());
+      if (callbacks.showToast && !componentsToRemove.length)
+        callbacks.showToast("No effects found in selection", "info");
+      window.getSelection().removeAllRanges();
+      return true;
+    }
 
-          if (callbacks.showToast && componentsToRemove.length <= 0) {
-            callbacks.showToast("No effects found in selection", "info");
-          }
-        } else {
-          // Create rectangles for highlight, underline, strikethrough
-          const pageRects = Array.from(rects)
-            .map((rect) => ({
-              x: (rect.left - pageRect.left) / zoom,
-              y: (rect.top - pageRect.top) / zoom,
-              width: rect.width / zoom,
-              height: rect.height / zoom,
-              bottom: (rect.bottom - pageRect.top) / zoom,
-              right: (rect.right - pageRect.left) / zoom,
-            }))
-            .filter((r) => r.width > 0 && r.height > 0);
+    // Convert and Sort rects (top to bottom, left to right)
+    const sortedRects = rawRects
+      .map(toPdfRect)
+      .sort((a, b) => (Math.abs(a.y - b.y) > 5 ? a.y - b.y : a.x - b.x));
 
-          // Sort rectangles from top to bottom, left to right
-          pageRects.sort((a, b) => {
-            if (Math.abs(a.y - b.y) > 5) return a.y - b.y;
-            return a.x - b.x;
-          });
+    // Merge adjacent rects on the same line
+    const mergedRects = [];
+    for (const rect of sortedRects) {
+      let merged = false;
+      // Iterate backwards to find the nearest mergeable rect
+      for (let i = mergedRects.length - 1; i >= 0; i--) {
+        const exist = mergedRects[i];
+        // Check same line (vertical overlap > 50% of min height)
+        const verticalOverlap = Math.min(rect.bottom, exist.bottom) - Math.max(rect.y, exist.y);
+        const minH = Math.min(rect.height, exist.height);
 
-          const mergedRects = [];
-
-          // Merge adjacent rectangles on the same line
-          for (const rect of pageRects) {
-            let merged = false;
-            for (let i = mergedRects.length - 1; i >= 0; i--) {
-              const existing = mergedRects[i];
-              const verticalOverlap =
-                Math.min(rect.bottom, existing.bottom) - Math.max(rect.y, existing.y);
-              const minHeight = Math.min(rect.height, existing.height);
-
-              // Check if there is vertical overlap (same line)
-              if (verticalOverlap > minHeight * 0.5) {
-                const gap = Math.max(rect.x, existing.x) - Math.min(rect.right, existing.right);
-                if (gap < 2) {
-                  // Merge two rectangles
-                  existing.x = Math.min(rect.x, existing.x);
-                  existing.y = Math.min(rect.y, existing.y);
-                  existing.right = Math.max(rect.right, existing.right);
-                  existing.bottom = Math.max(rect.bottom, existing.bottom);
-                  existing.width = existing.right - existing.x;
-                  existing.height = existing.bottom - existing.y;
-                  merged = true;
-                  break;
-                }
-              }
-            }
-            if (!merged) mergedRects.push(rect);
-          }
-
-          // Create components corresponding to action
-          for (const rect of mergedRects) {
-            const { x, y, width, height } = rect;
-            const id = `annot-${Date.now()}-${Math.random()}`;
-
-            if (actionType === "highlight") {
-              pageObj.createComponentWithDimensions(
-                "rectangle",
-                { subType: "highlight", fill: "#FFFF00", opacity: 0.5 },
-                id,
-                x,
-                y,
-                width,
-                height,
-              );
-            } else if (actionType === "underline") {
-              const underlineHeight = 1;
-              pageObj.createComponentWithDimensions(
-                "rectangle",
-                { fill: "#000000", opacity: 1, subType: "underline" },
-                id,
-                x,
-                y + height - underlineHeight,
-                width,
-                underlineHeight,
-              );
-            } else if (actionType === "strikethrough") {
-              const strikeHeight = 1;
-              pageObj.createComponentWithDimensions(
-                "rectangle",
-                { fill: "#FF0000", opacity: 1, subType: "strikethrough" },
-                id,
-                x,
-                y + height / 2 - strikeHeight / 2,
-                width,
-                strikeHeight,
-              );
-            }
+        if (verticalOverlap > minH * 0.5) {
+          // Check horizontal adjacency
+          const gap = Math.max(rect.x, exist.x) - Math.min(rect.right, exist.right);
+          if (gap < 2) {
+            exist.x = Math.min(rect.x, exist.x);
+            exist.y = Math.min(rect.y, exist.y);
+            exist.right = Math.max(rect.right, exist.right);
+            exist.bottom = Math.max(rect.bottom, exist.bottom);
+            exist.width = exist.right - exist.x;
+            exist.height = exist.bottom - exist.y;
+            merged = true;
+            break;
           }
         }
       }
+      if (!merged) mergedRects.push(rect);
     }
+
+    // Create corresponding component
+    const configs = {
+      highlight: (r) => ({
+        subType: "highlight",
+        fill: "#FFFF00",
+        opacity: 0.5,
+        y: r.y,
+        h: r.height,
+      }),
+      underline: (r) => ({
+        subType: "underline",
+        fill: "#000000",
+        opacity: 1,
+        y: r.y + r.height - 1,
+        h: 1,
+      }),
+      strikethrough: (r) => ({
+        subType: "strikethrough",
+        fill: "#FF0000",
+        opacity: 1,
+        y: r.y + r.height / 2 - 0.5,
+        h: 1,
+      }),
+    };
+
+    mergedRects.forEach((r) => {
+      if (configs[actionType]) {
+        const conf = configs[actionType](r);
+        pageObj.createComponentWithDimensions(
+          "rectangle",
+          { ...conf },
+          `annot-${Date.now()}-${Math.random()}`,
+          r.x,
+          conf.y,
+          r.width,
+          conf.h,
+        );
+      }
+    });
 
     window.getSelection().removeAllRanges();
     return true;
