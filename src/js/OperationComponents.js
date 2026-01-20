@@ -488,11 +488,6 @@ class TextOperationComponent extends BasicOperationComponent {
 
     // Initial size update
     setTimeout(this.updateSize, 0);
-
-    this.wrapperContainer.addEventListener("dblclick", (event) => {
-      event.stopPropagation();
-      this.fireEvent("pdfeditor.editWatermark");
-    });
   }
 
   updateSize = () => {
@@ -1223,7 +1218,7 @@ class WatermarkOperationComponent extends BasicOperationComponent {
       fontFamily: fontFamily,
       color: color,
       fontSize: fontSize,
-      lineHeight: 1,
+      lineHeight: 1.2,
       opacity: opacity,
       wordBreak: "break-all",
       rotation: rotation,

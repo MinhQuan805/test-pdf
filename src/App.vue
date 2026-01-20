@@ -720,7 +720,14 @@
           >
             <i class="fa-solid fa-mouse-pointer"></i>
           </div>
-
+          <div
+            class="body-tool"
+            :class="{ active: showSearchBox }"
+            @click="toggleSearchBox"
+            title="Search Tool - Find text in the document"
+          >
+            <i class="fa-solid fa-search"></i>
+          </div>
           <div
             class="body-tool"
             :class="{ active: selectedTool === 'text' }"
@@ -831,15 +838,6 @@
             title="Watermark Tool - Add watermark to pages"
           >
             <i class="fa-solid fa-stamp"></i>
-          </div>
-
-          <div
-            class="body-tool"
-            :class="{ active: showSearchBox }"
-            @click="toggleSearchBox"
-            title="Search Tool - Find text in the document"
-          >
-            <i class="fa-solid fa-search"></i>
           </div>
         </div>
 
@@ -1317,6 +1315,7 @@ export default {
                   );
                   op.x = layout.x;
                   op.y = layout.y;
+                  op.position = watermarkData.position;
                 }
               }
             }
@@ -1338,7 +1337,6 @@ export default {
           if (page) {
             // Use rotation from watermarkData
             const rotation = watermarkData.rotation || 0;
-
             // Calculate positions based on position setting
             const pageWidth = page.container.offsetWidth;
             const pageHeight = page.container.offsetHeight;
@@ -1378,6 +1376,7 @@ export default {
                   underline: watermarkData.underline,
                   alignment: watermarkData.alignment,
                   groupId: groupId,
+                  position: watermarkData.position,
                 },
                 id,
                 pos.x,
@@ -1488,7 +1487,7 @@ export default {
         italic: operation.italic,
         underline: operation.underline,
         alignment: operation.alignment || "center",
-        position: "center",
+        position: operation.position || "center",
         applyTo: "all",
       };
 
@@ -2820,15 +2819,21 @@ export default {
     };
 
     const clearHighlights = () => {
-      // Restore original content for all matched elements
-      const processedElements = new Set();
-      searchMatches.value.forEach((match) => {
-        if (!processedElements.has(match.element)) {
-          processedElements.add(match.element);
-          // Remove all highlight marks by getting text content and resetting
-          const text = match.element.textContent;
-          match.element.textContent = text;
-        }
+      // Remove all highlight marks from all text layers
+      const textLayers = document.querySelectorAll(".textLayer");
+      textLayers.forEach((textLayer) => {
+        const spans = textLayer.querySelectorAll("span");
+        spans.forEach((span) => {
+          // Check if span has highlight marks
+          const marks = span.querySelectorAll(
+            "mark.search-highlight, mark.search-highlight-current",
+          );
+          if (marks.length > 0) {
+            // Restore original text content without HTML
+            const text = span.textContent;
+            span.textContent = text;
+          }
+        });
       });
     };
 
@@ -3162,6 +3167,11 @@ export default {
 
     // Text Selection Toolbar functions
     const handleDocumentMouseUp = (e) => {
+      // Không hiển thị text selection toolbar khi đang sử dụng công cụ text
+      if (selectedTool.value === "text") {
+        return;
+      }
+
       const result = textSelection.handleSelection(e);
       if (result) {
         showTextSelectionToolbar.value = result.show;
@@ -3250,7 +3260,7 @@ export default {
           startX: selectStartPos.value.x,
           startY: selectStartPos.value.y,
           endX: selectCurrentPos.value.x,
-          endY: selectCurrentPos.value.y
+          endY: selectCurrentPos.value.y,
         };
 
         textSelection.selectTextInRectangle(selectionRect, pageElement);
@@ -4216,8 +4226,8 @@ export default {
 /* Text selection rectangle overlay */
 .text-selection-rectangle {
   position: fixed;
-  border: 2px solid #007acc;
-  background: rgba(0, 122, 204, 0.1);
+  border: 2px solid #6ec5ff;
+  background: none;
   pointer-events: none;
   z-index: 9999;
   display: none;

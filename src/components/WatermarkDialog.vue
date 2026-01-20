@@ -190,6 +190,7 @@
               <button
                 v-for="pos in positions"
                 :key="pos.value"
+
                 :class="['position-cell', { active: watermarkData.position === pos.value }]"
                 @click="watermarkData.position = pos.value"
                 :title="pos.label"
@@ -307,7 +308,7 @@ export default {
   computed: {
     previewScale() {
       if (!this.pageWidth || !this.pageHeight) return 0.3;
-      const maxWidth = 300;
+      const maxWidth = 350;
       const maxHeight = window.innerHeight;
       const scaleX = maxWidth / this.pageWidth;
       const scaleY = maxHeight / this.pageHeight;
@@ -335,23 +336,23 @@ export default {
     watermarkPositionStyle() {
       const positionMap = {
         "top-left": {
-          top: "5%",
-          left: "5%",
+          top: "0",
+          left: "0",
           transform: `rotate(${this.watermarkData.rotation}deg)`,
         },
         "top-center": {
-          top: "5%",
+          top: "0",
           left: "50%",
           transform: `translateX(-50%) rotate(${this.watermarkData.rotation}deg)`,
         },
         "top-right": {
-          top: "5%",
-          right: "5%",
+          top: "0",
+          right: "0",
           transform: `rotate(${this.watermarkData.rotation}deg)`,
         },
         "middle-left": {
           top: "50%",
-          left: "5%",
+          left: "0",
           transform: `translateY(-50%) rotate(${this.watermarkData.rotation}deg)`,
         },
         center: {
@@ -361,22 +362,22 @@ export default {
         },
         "middle-right": {
           top: "50%",
-          right: "5%",
+          right: "0",
           transform: `translateY(-50%) rotate(${this.watermarkData.rotation}deg)`,
         },
         "bottom-left": {
-          bottom: "5%",
-          left: "5%",
+          bottom: "0",
+          left: "0",
           transform: `rotate(${this.watermarkData.rotation}deg)`,
         },
         "bottom-center": {
-          bottom: "5%",
+          bottom: "0",
           left: "50%",
           transform: `translateX(-50%) rotate(${this.watermarkData.rotation}deg)`,
         },
         "bottom-right": {
-          bottom: "5%",
-          right: "5%",
+          bottom: "0",
+          right: "0",
           transform: `rotate(${this.watermarkData.rotation}deg)`,
         },
       };
@@ -476,11 +477,7 @@ export default {
 @reference "../css/tailwind.css";
 
 .preview-pane-wrapper {
-  @apply fixed top-1/2 right-32 -translate-y-1/2 z-10001 bg-white rounded-lg shadow-2xl flex flex-col;
-}
-
-.preview-header {
-  @apply flex items-center justify-between p-3 border-b border-gray-200;
+  @apply fixed top-1/2 right-32 -translate-y-1/2 z-10001 bg-none flex flex-col;
 }
 
 .close-preview-btn {

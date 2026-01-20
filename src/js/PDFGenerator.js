@@ -113,7 +113,7 @@ class PDFGenerator {
         if (op.type === "text") {
           await this.drawTextOnPage(pdfDoc, pdfPage, op);
         } else if (op.type === "watermark") {
-          await this.drawTextOnPage(pdfDoc, pdfPage, op);
+          await this.drawWatermarkOnPage(pdfDoc, pdfPage, op);
         } else if (op.type === "rectangle") {
           await this.drawRectangleOnPage(pdfDoc, pdfPage, op);
         } else if (op.type === "circle") {
@@ -149,6 +149,81 @@ class PDFGenerator {
   static async drawTextOnPage(pdfDoc, pdfPage, operation) {
     const operationPageHeight = pdfPage.getHeight();
 
+    const xPadding = operation.xPadding;
+    const text = operation.text.replaceAll("\n\n", "\n \n");
+    const x = operation.x;
+    const y = operation.y;
+    const fontFamily = operation.fontFamily;
+    const fontSize = parseInt(operation.fontSize);
+    const fontColor = PDFGenerator.hexToRgb(operation.color);
+    const fontLineHeight = operation.fontSize * operation.lineHeight;
+    const fontWordBreak = operation.wordBreak;
+    const width = operation.width;
+    const opacity = parseFloat(operation.opacity, 10);
+
+    let embedFont;
+
+    if (fontFamily === "Helvetica") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+    } else if (fontFamily === "Helvetica-Bold") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    } else if (fontFamily === "Helvetica-Oblique") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaOblique);
+    } else if (fontFamily === "Helvetica-BoldOblique") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBoldOblique);
+    } else if (fontFamily === "Times-Roman") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman);
+    } else if (fontFamily === "Times-Bold") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesBold);
+    } else if (fontFamily === "Times-Italic") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesItalic);
+    } else if (fontFamily === "Times-BoldItalic") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesBoldItalic);
+    } else if (fontFamily === "Courier") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Courier);
+    } else if (fontFamily === "Courier-Bold") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.CourierBold);
+    } else if (fontFamily === "Courier-Oblique") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.CourierOblique);
+    } else if (fontFamily === "Courier-BoldOblique") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.CourierBoldOblique);
+    } else if (fontFamily === "Symbol") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Symbol);
+    } else if (fontFamily === "ZapfDingbats") {
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.ZapfDingbats);
+    } else if (fontFamily === "TimesRoman") {
+      // Legacy support for old naming
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman);
+    } else {
+      // Default fallback
+      embedFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+    }
+
+    let wordBreaks = [];
+
+    if (fontWordBreak === "break-all") {
+      wordBreaks.push("");
+    } else if (fontWordBreak === "break-word") {
+      wordBreaks.push(" ");
+    }
+
+    await pdfPage.drawText(text, {
+      x: x + xPadding,
+      y: operationPageHeight - y - fontSize,
+      color: PDFLib.rgb(fontColor.red, fontColor.green, fontColor.blue),
+      font: embedFont,
+      size: fontSize,
+      lineHeight: fontLineHeight,
+      opacity: opacity,
+      wordBreaks: wordBreaks,
+      maxWidth: width,
+    });
+  }
+
+  static async drawWatermarkOnPage(pdfDoc, pdfPage, operation) {
+    const operationPageHeight = pdfPage.getHeight();
+    const { x: pageX, y: pageY } = pdfPage.getCropBox() || pdfPage.getMediaBox();
+
     const xPadding = operation.xPadding || 0;
     const text = operation.text.replaceAll("\n\n", "\n \n");
     const x = operation.x;
@@ -156,9 +231,10 @@ class PDFGenerator {
     let fontFamily = operation.fontFamily;
     const fontSize = parseInt(operation.fontSize);
     const fontColor = PDFGenerator.hexToRgb(operation.color);
-    const fontLineHeight = operation.fontSize * (operation.lineHeight || 1);
+    const fontLineHeight = operation.fontSize * (operation.lineHeight || 1.2);
     const fontWordBreak = operation.wordBreak || "break-all";
     const width = operation.width;
+    const height = operation.height || fontSize;
     const opacity = parseFloat(operation.opacity, 10);
     const bold = operation.bold || false;
     const italic = operation.italic || false;
@@ -240,9 +316,46 @@ class PDFGenerator {
       wordBreaks.push(" ");
     }
 
-    const drawOptions = {
-      x: x + xPadding,
-      y: operationPageHeight - y - fontSize,
+    // Calculate text dimensions
+    // For multi-line text, calculate the width of the longest line
+    const lines = text.split("\n");
+    let textWidth = 0;
+    lines.forEach((line) => {
+      const lineWidth = embedFont.widthOfTextAtSize(line, fontSize);
+      if (lineWidth > textWidth) {
+        textWidth = lineWidth;
+      }
+    });
+    // Calculate total height: first line takes fontSize, subsequent lines are spaced by fontLineHeight
+    const textHeight = lines.length > 1 ? fontSize + (lines.length - 1) * fontLineHeight : fontSize;
+
+    // Calculate center of the component in PDF coordinates
+    // HTML (0,0) is top-left. PDF (0,0) is bottom-left.
+    const cx = x + width / 2;
+    const cy = y + height / 2;
+
+    const pdfCx = pageX + cx;
+    const pdfCy = pageY + operationPageHeight - cy;
+
+    // Rotation
+    const pdfRotation = -rotation;
+    const rad = (pdfRotation * Math.PI) / 180;
+
+    // Center of text relative to the drawing origin (baseline of first line)
+    const u = textWidth / 2;
+    const v = (fontSize - (lines.length - 1) * fontLineHeight) / 2;
+
+    // Calculate offset to place the text such that its center is at (pdfCx, pdfCy)
+    const rx = u * Math.cos(rad) - v * Math.sin(rad);
+    const ry = u * Math.sin(rad) + v * Math.cos(rad);
+
+    const drawX = pdfCx - rx;
+    const drawY = pdfCy - ry;
+
+    // Draw all lines as a single text block with line breaks
+    await pdfPage.drawText(text, {
+      x: drawX,
+      y: drawY,
       color: PDFLib.rgb(fontColor.red, fontColor.green, fontColor.blue),
       font: embedFont,
       size: fontSize,
@@ -250,23 +363,33 @@ class PDFGenerator {
       opacity: opacity,
       wordBreaks: wordBreaks,
       maxWidth: width,
-    };
-
-    // Add rotation if specified
-    if (rotation !== 0) {
-      drawOptions.rotate = PDFLib.degrees(rotation);
-    }
-
-    await pdfPage.drawText(text, drawOptions);
+      rotate: PDFLib.degrees(pdfRotation),
+    });
 
     // Draw underline if specified
     if (underline) {
-      const textWidth = embedFont.widthOfTextAtSize(text, fontSize);
-      const underlineY = operationPageHeight - y - fontSize - 2;
+      const underlineOffset = -2; // 2 units below baseline
+
+      // Start point relative to origin (unrotated)
+      const startX_rel = 0;
+      const startY_rel = underlineOffset;
+
+      // End point relative to origin (unrotated)
+      const endX_rel = textWidth;
+      const endY_rel = underlineOffset;
+
+      // Rotate points
+      const rotatePoint = (px, py) => ({
+        x: px * Math.cos(rad) - py * Math.sin(rad),
+        y: px * Math.sin(rad) + py * Math.cos(rad),
+      });
+
+      const startRot = rotatePoint(startX_rel, startY_rel);
+      const endRot = rotatePoint(endX_rel, endY_rel);
 
       pdfPage.drawLine({
-        start: { x: x + xPadding, y: underlineY },
-        end: { x: x + xPadding + textWidth, y: underlineY },
+        start: { x: drawX + startRot.x, y: drawY + startRot.y },
+        end: { x: drawX + endRot.x, y: drawY + endRot.y },
         thickness: Math.max(1, fontSize / 12),
         color: PDFLib.rgb(fontColor.red, fontColor.green, fontColor.blue),
         opacity: opacity,
